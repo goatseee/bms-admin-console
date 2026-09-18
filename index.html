@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BMS管理系统</title>
+<style>
+:root{--primary:#1A5276;--primary-light:#2E86C1;--primary-dark:#0E3A5C;--sidebar-bg:#2B4C6F;--sidebar-active:#1A3C5E;--sidebar-hover:#356080;--bg:#F0F2F5;--card-bg:#FFF;--border:#E4E7ED;--text:#303133;--text-secondary:#909399;--success:#67C23A;--warning:#E6A23C;--danger:#F56C6C;--info:#909399;--orange:#F39C12;--purple:#8E44AD}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Microsoft YaHei','Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+a{text-decoration:none;color:inherit}
+ul{list-style:none}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:#C0C4CC;border-radius:3px}
+::-webkit-scrollbar-track{background:transparent}
+.app{display:flex;min-height:100vh}
+.sidebar{width:200px;background:var(--sidebar-bg);flex-shrink:0;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100}
+.main{flex:1;margin-left:200px;display:flex;flex-direction:column;min-height:100vh}
+.sidebar-logo{height:56px;display:flex;align-items:center;padding:0 16px;gap:8px;background:var(--primary-dark)}
+.sidebar-logo .logo-icon{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#2E86C1,#F39C12);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:bold}
+.sidebar-logo .logo-text{color:#fff;font-size:15px;font-weight:600;white-space:nowrap}
+.sidebar-menu{flex:1;overflow-y:auto;padding:4px 0}
+.menu-item{padding:0 16px}
+.menu-link{display:flex;align-items:center;padding:10px 12px;color:#C8D3DF;cursor:pointer;border-radius:4px;font-size:13px;gap:8px;transition:all .2s}
+.menu-link:hover{background:var(--sidebar-hover);color:#fff}
+.menu-link.active{background:var(--sidebar-active);color:#fff}
+.menu-link .icon{width:16px;text-align:center}
+.menu-link .arrow{margin-left:auto;font-size:10px;transition:transform .2s}
+.menu-link .arrow.open{transform:rotate(180deg)}
+.sub-menu{max-height:0;overflow:hidden;transition:max-height .3s}
+.sub-menu.open{max-height:300px}
+.sub-menu .menu-link{padding-left:40px;font-size:12px}
+.sub-menu .menu-link.active{background:var(--sidebar-active);color:#fff}
+.topbar{height:48px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;position:sticky;top:0;z-index:50}
+.topbar .breadcrumb{display:flex;align-items:center;gap:6px;color:var(--text-secondary);font-size:13px}
+.topbar .breadcrumb .back{cursor:pointer}
+.topbar .breadcrumb .sep{color:#C0C4CC}
+.topbar .tabs{display:flex;gap:4px;margin-left:12px;flex:1;overflow-x:auto}
+.topbar .tab{padding:4px 12px;border:1px solid var(--border);border-radius:4px;font-size:12px;color:var(--text-secondary);cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px}
+.topbar .tab.active{color:var(--primary);border-color:var(--primary);border-bottom:2px solid var(--primary)}
+.topbar .tab .close{font-size:14px;margin-left:2px;color:#C0C4CC}
+.topbar .user-area{display:flex;align-items:center;gap:10px;margin-left:auto}
+.topbar .user-area .item{display:flex;align-items:center;gap:4px;color:var(--text-secondary);font-size:12px;cursor:pointer}
+.topbar .user-area .avatar{width:28px;height:28px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;cursor:pointer}
+.content{flex:1;padding:16px;overflow-y:auto}
+.page{display:none}.page.active{display:block}
+.stat-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+.stat-card{border-radius:8px;padding:16px 20px;color:#fff;display:flex;flex-direction:column;gap:6px;min-height:80px;cursor:pointer;transition:transform .2s,box-shadow .2s}
+.stat-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.15)}
+.stat-card .label{font-size:12px;opacity:.85}
+.stat-card .value{font-size:26px;font-weight:700}
+.stat-card .icon{font-size:28px;opacity:.3;margin-left:auto}
+.stat-card .row{display:flex;align-items:flex-start}
+.bg-blue{background:linear-gradient(135deg,#2980B9,#3498DB)}
+.bg-green{background:linear-gradient(135deg,#27AE60,#2ECC71)}
+.bg-orange{background:linear-gradient(135deg,#D35400,#E67E22)}
+.bg-red{background:linear-gradient(135deg,#C0392B,#E74C3C)}
+.bg-cyan{background:linear-gradient(135deg,#16A085,#1ABC9C)}
+.bg-purple{background:linear-gradient(135deg,#7D3C98,#9B59B6)}
+.dash-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.dash-row-2{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px}
+.dash-card{background:var(--card-bg);border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.08);overflow:hidden}
+.dash-card .header{padding:12px 16px;border-bottom:1px solid var(--border);font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;justify-content:space-between}
+.dash-card .header .more{font-size:12px;color:var(--primary-light);cursor:pointer;font-weight:400}
+.dash-card .header .more:hover{text-decoration:underline}
+.dash-card .body{padding:12px 16px}
+.chart-area{height:200px;position:relative}
+.map-placeholder{height:400px;background:linear-gradient(135deg,#E8F5E9,#E3F2FD);border-radius:8px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.map-placeholder .map-bg{position:absolute;inset:0;opacity:.12;background-image:repeating-linear-gradient(45deg,#999 1px,transparent 1px,transparent 20px),repeating-linear-gradient(-45deg,#999 1px,transparent 1px,transparent 20px)}
+.map-pin{position:absolute;width:24px;height:24px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3);cursor:pointer}
+.map-pin.green{background:#27AE60}.map-pin.blue{background:#2980B9}.map-pin.red{background:#E74C3C}
+.map-pin .num{transform:rotate(45deg)}
+.info-list{display:flex;flex-direction:column}
+.info-list .item{display:flex;align-items:center;padding:8px 0;border-bottom:1px dashed var(--border);font-size:13px;cursor:pointer;transition:background .15s;padding-left:4px;padding-right:4px;border-radius:4px}
+.info-list .item:hover{background:#F5F7FA}
+.info-list .item:last-child{border-bottom:none}
+.info-list .item .rank{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;margin-right:8px;flex-shrink:0}
+.info-list .item .rank-1{background:#E74C3C}.info-list .item .rank-2{background:#E67E22}.info-list .item .rank-3{background:#F1C40F}.info-list .item .rank-other{background:#95A5A6}
+.info-list .item .imei{color:var(--primary);font-weight:500;flex:1}
+.info-list .item .val{color:var(--danger);font-weight:600}
+.info-list .item .time{color:var(--text-secondary);font-size:11px;margin-left:8px}
+.filter-bar{background:var(--card-bg);border-radius:8px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08)}
+.filter-row{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px;align-items:flex-end}
+.filter-row:last-child{margin-bottom:0}
+.filter-item{display:flex;flex-direction:column;gap:4px}
+.filter-item label{font-size:12px;color:var(--text-secondary)}
+.input,.select{padding:6px 10px;border:1px solid var(--border);border-radius:4px;font-size:13px;outline:none;width:180px;color:var(--text);background:#fff}
+.input:focus,.select:focus{border-color:var(--primary-light)}
+.input::placeholder{color:#C0C4CC;font-size:12px}
+.btn{padding:6px 16px;border:none;border-radius:4px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:4px;transition:opacity .2s;white-space:nowrap}
+.btn:hover{opacity:.85}
+.btn:active{opacity:.7}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-success{background:var(--success);color:#fff}
+.btn-warning{background:var(--orange);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-purple{background:var(--purple);color:#fff}
+.btn-cyan{background:#16A085;color:#fff}
+.btn-default{background:#fff;border:1px solid var(--border);color:var(--text)}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn-group{display:flex;gap:8px}
+.btn-group .btn-sm{margin-right:2px}
+.table-wrap{background:var(--card-bg);border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.08);overflow:hidden}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{background:#F5F7FA;padding:10px 12px;text-align:left;font-size:12px;color:var(--text-secondary);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)}
+td{padding:10px 12px;font-size:13px;border-bottom:1px solid var(--border);white-space:nowrap}
+tr:hover td{background:#F5F7FA}
+.cell-link{color:var(--primary-light);cursor:pointer}
+.cell-link:hover{text-decoration:underline}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px}
+.tag-success{background:#E8F8F0;color:var(--success);border:1px solid #B7EB8F}
+.tag-warning{background:#FDF6EC;color:var(--warning);border:1px solid #F5DAB1}
+.tag-danger{background:#FDECEC;color:var(--danger);border:1px solid #FBC4C4}
+.tag-info{background:#F4F4F5;color:var(--info);border:1px solid #D3D4D6}
+.tag-primary{background:#ECF5FF;color:var(--primary-light);border:1px solid #B3D8FF}
+.tag-purple{background:#F4ECF7;color:var(--purple);border:1px solid #D7BBE5}
+.pagination{display:flex;align-items:center;gap:8px;padding:12px 16px;font-size:13px;color:var(--text-secondary)}
+.pagination .page-size{display:flex;align-items:center;gap:4px}
+.pagination .page-size .opt{padding:2px 8px;border:1px solid var(--border);border-radius:4px;cursor:pointer}
+.pagination .page-size .opt.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.pagination .pages{display:flex;gap:4px}
+.pagination .pages .pg{padding:4px 10px;border:1px solid var(--border);border-radius:4px;cursor:pointer}
+.pagination .pages .pg.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.pagination .total{margin-left:auto}
+.pagination .jump{display:flex;align-items:center;gap:4px}
+.pagination .jump input{width:40px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;text-align:center}
+.detail-panel{background:var(--card-bg);border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.08);padding:16px;margin-bottom:12px}
+.detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.detail-item{display:flex;flex-direction:column;gap:4px}
+.detail-item label{font-size:12px;color:var(--text-secondary)}
+.detail-item .val{font-size:13px;color:var(--text);font-weight:500}
+.detail-item .val.dash{color:#C0C4CC}
+.switch-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px}
+.switch-item{display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--border);border-radius:4px;background:#F5F7FA}
+.switch-item .label{font-size:12px}
+.switch-item .status{font-size:11px;padding:2px 6px;border-radius:4px}
+.switch-item .status.on{background:#E8F8F0;color:var(--success)}
+.switch-item .status.off{background:#FDECEC;color:var(--danger)}
+.voltage-row{display:flex;gap:12px;margin-top:12px}
+.voltage-box{flex:1;border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center}
+.voltage-box .label{font-size:12px;color:var(--text-secondary);margin-bottom:4px}
+.voltage-box .val{font-size:20px;font-weight:700;color:var(--primary)}
+.role-layout{display:grid;grid-template-columns:300px 1fr;gap:12px}
+.role-list-panel{background:var(--card-bg);border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.08);padding:12px}
+.role-item{padding:10px 12px;border-radius:4px;cursor:pointer;font-size:13px;margin-bottom:4px}
+.role-item:hover{background:#F5F7FA}
+.role-item.active{background:#ECF5FF;color:var(--primary)}
+.role-perm-panel{background:var(--card-bg);border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.08);padding:12px}
+.perm-tree{margin-top:12px}
+.perm-node{padding:4px 0}
+.perm-node .row{display:flex;align-items:center;gap:6px;cursor:pointer}
+.perm-node .child{padding-left:24px}
+.perm-check{width:16px;height:16px}
+.section-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.section-title::before{content:'';width:3px;height:16px;background:var(--primary);border-radius:2px}
+.alert{padding:8px 16px;border-radius:4px;font-size:12px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.alert-warning{background:#FDF6EC;color:var(--warning);border:1px solid #F5DAB1}
+.loc-layout{display:grid;grid-template-columns:360px 1fr;gap:12px}
+.loc-info{background:var(--card-bg);border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.08);padding:12px}
+.loc-map{background:var(--card-bg);border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.08);overflow:hidden}
+.loc-map .map-area{height:500px;background:linear-gradient(135deg,#E8F5E9,#E3F2FD);position:relative;overflow:hidden}
+.loc-map .map-area .grid-bg{position:absolute;inset:0;opacity:.1;background-image:repeating-linear-gradient(0deg,#666 1px,transparent 1px,transparent 40px),repeating-linear-gradient(90deg,#666 1px,transparent 1px,transparent 40px)}
+.sub-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:12px}
+.sub-tab{padding:8px 20px;cursor:pointer;font-size:13px;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-2px}
+.sub-tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+.bar-chart{display:flex;align-items:flex-end;gap:3px;height:180px;padding:8px 0}
+.bar-chart .bar{flex:1;background:linear-gradient(180deg,#3498DB,#2980B9);border-radius:2px 2px 0 0;min-height:2px;position:relative;cursor:pointer;transition:background .2s}
+.bar-chart .bar:hover{background:linear-gradient(180deg,#2E86C1,#1B4F72)}
+.area-chart{height:180px;position:relative;overflow:hidden}
+.area-chart svg{width:100%;height:100%}
+.pie-chart{display:flex;align-items:center;justify-content:center;gap:20px}
+.pie-chart .pie{width:120px;height:120px;border-radius:50%;position:relative}
+.pie-legend{display:flex;flex-direction:column;gap:8px}
+.pie-legend .item{display:flex;align-items:center;gap:6px;font-size:12px}
+.pie-legend .dot{width:10px;height:10px;border-radius:50%}
+.form-group{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.form-group label{font-size:12px;color:var(--text-secondary)}
+.form-group .input,.form-group .select{width:100%}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.kv-list{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kv-list .kv{display:flex;gap:6px;padding:6px 0;border-bottom:1px dashed var(--border)}
+.kv-list .kv .k{color:var(--text-secondary);font-size:12px;white-space:nowrap}
+.kv-list .kv .v{color:var(--text);font-size:12px;font-weight:500}
+/* ====== NEW: Modal ====== */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:8px;width:520px;max-width:90vw;max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.modal.modal-lg{width:720px}
+.modal.modal-sm{width:400px}
+.modal .modal-header{padding:16px 20px;border-bottom:1px solid var(--border);font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1}
+.modal .modal-header .close{cursor:pointer;color:var(--text-secondary);font-size:20px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px}
+.modal .modal-header .close:hover{background:#F5F7FA}
+.modal .modal-body{padding:20px}
+.modal .modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;background:#fff}
+.modal-form .form-group label .req{color:var(--danger);margin-left:2px}
+.modal-form .form-full{grid-column:1/-1}
+.modal-form .form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.modal-detail .detail-row{display:flex;padding:8px 0;border-bottom:1px dashed var(--border);font-size:13px}
+.modal-detail .detail-row .dk{width:130px;color:var(--text-secondary);flex-shrink:0}
+.modal-detail .detail-row .dv{color:var(--text);font-weight:500;flex:1;word-break:break-all}
+/* ====== NEW: Toast ====== */
+.toast-container{position:fixed;top:60px;right:20px;z-index:300;display:flex;flex-direction:column;gap:8px}
+.toast{padding:12px 20px;border-radius:8px;color:#fff;font-size:13px;display:flex;align-items:center;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);animation:toastIn .3s ease;max-width:380px}
+.toast.toast-success{background:var(--success)}
+.toast.toast-error{background:var(--danger)}
+.toast.toast-warning{background:var(--warning)}
+.toast.toast-info{background:var(--primary)}
+.toast.hide{animation:toastOut .3s ease forwards}
+@keyframes toastIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes toastOut{from{transform:translateX(0);opacity:1}to{transform:translateX(100%);opacity:0}}
+/* ====== NEW: Confirm Dialog ====== */
+.confirm-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;margin-right:12px;flex-shrink:0}
+.confirm-icon.danger{background:#FDECEC;color:var(--danger)}
+.confirm-icon.warning{background:#FDF6EC;color:var(--warning)}
+.confirm-icon.info{background:#ECF5FF;color:var(--primary-light)}
+.confirm-body{display:flex;align-items:flex-start}
+.confirm-text{flex:1}
+.confirm-text .title{font-size:15px;font-weight:600;margin-bottom:4px}
+.confirm-text .desc{font-size:13px;color:var(--text-secondary);line-height:1.5}
+/* ====== NEW: Dropdown ====== */
+.dropdown-wrap{position:relative;display:inline-block}
+.dropdown-menu{display:none;position:absolute;top:100%;right:0;margin-top:4px;background:#fff;border:1px solid var(--border);border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:10;min-width:140px;padding:4px 0}
+.dropdown-menu.show{display:block}
+.dropdown-menu .dd-item{padding:8px 16px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px}
+.dropdown-menu .dd-item:hover{background:#F5F7FA}
+/* ====== NEW: Progress Bar ====== */
+.progress-bar{width:100%;height:20px;background:#F0F2F5;border-radius:10px;overflow:hidden;position:relative}
+.progress-bar .fill{height:100%;background:linear-gradient(90deg,#2980B9,#3498DB);border-radius:10px;transition:width .3s;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff}
+/* ====== NEW: History tabs in modal ====== */
+.hist-tabs{display:flex;gap:0;margin-bottom:12px;border-bottom:1px solid var(--border)}
+.hist-tab{padding:6px 16px;cursor:pointer;font-size:13px;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-1px}
+.hist-tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+.hist-content{max-height:400px;overflow-y:auto}
+/* ====== NEW: Checkbox cell highlight ====== */
+tr td:first-child input[type=checkbox]:checked~*{} 
+.cb-count{font-size:12px;color:var(--text-secondary);margin-left:8px}
+@media(max-width:1400px){.stat-cards{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){.sidebar{width:60px}.sidebar-logo .logo-text{display:none}.menu-link span:not(.icon){display:none}.main{margin-left:60px}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+<div class="sidebar-logo"><div class="logo-icon">BMS</div><div class="logo-text">BMS管理系统</div></div>
+<nav class="sidebar-menu" id="sidebarMenu">
+<div class="menu-item"><div class="menu-link nav-page" data-page="dashboard"><span class="icon">🏠</span><span>首页</span></div></div>
+<div class="menu-item"><div class="menu-link nav-toggle"><span class="icon">📦</span><span>设备管理</span><span class="arrow">▼</span></div><div class="sub-menu"><div class="menu-link nav-page" data-page="device-assign"><span>设备分配</span></div><div class="menu-link nav-page" data-page="device-ops"><span>设备运维</span></div><div class="menu-link nav-page" data-page="device-ota"><span>设备OTA</span></div><div class="menu-link nav-page" data-page="device-failed"><span>失效设备</span></div></div></div>
+<div class="menu-item"><div class="menu-link nav-page" data-page="location"><span class="icon">📍</span><span>定位监控</span></div></div>
+<div class="menu-item"><div class="menu-link nav-toggle"><span class="icon">🏢</span><span>商户管理</span><span class="arrow">▼</span></div><div class="sub-menu"><div class="menu-link nav-page" data-page="dealer"><span>经销商管理</span></div><div class="menu-link nav-page" data-page="dealer-account"><span>经销商账户管理</span></div><div class="menu-link nav-page" data-page="role"><span>角色管理</span></div></div></div>
+<div class="menu-item"><div class="menu-link nav-toggle"><span class="icon">⚙</span><span>系统设置</span><span class="arrow">▼</span></div><div class="sub-menu"><div class="menu-link nav-page" data-page="settings"><span>系统配置</span></div><div class="menu-link nav-page" data-page="settings-mqtt"><span>MQTT配置</span></div><div class="menu-link nav-page" data-page="settings-threshold"><span>阈值配置</span></div></div></div>
+<div class="menu-item"><div class="menu-link nav-toggle"><span class="icon">🔧</span><span>运维管理</span><span class="arrow">▼</span></div><div class="sub-menu"><div class="menu-link nav-page" data-page="sys-log"><span>系统日志</span></div><div class="menu-link nav-page" data-page="op-log"><span>操作日志</span></div><div class="menu-link nav-page" data-page="login-lock"><span>登录锁定</span></div></div></div>
+</nav>
+</aside>
+<div class="main">
+<header class="topbar">
+<div class="breadcrumb"><span class="back">←</span><span id="crumbText">首页</span></div>
+<div class="tabs" id="topbarTabs"><div class="tab active" data-page="dashboard">首页</div></div>
+<div class="user-area"><div class="item">🌐 中文</div><div class="item">🕐 时区+8</div><div class="avatar">管</div></div>
+</header>
+<div class="content" id="content">
+
+<!-- ====== 首页/仪表盘 ====== -->
+<div class="page active" id="page-dashboard">
+  <div class="stat-cards">
+    <div class="stat-card bg-blue" onclick="switchPage('device-ops')"><div class="row"><div><div class="label">总设备数量</div><div class="value">11,191</div></div><div class="icon">📦</div></div></div>
+    <div class="stat-card bg-green" onclick="switchPage('device-ops')"><div class="row"><div><div class="label">在线设备数量</div><div class="value">3,617</div></div><div class="icon">🟢</div></div></div>
+    <div class="stat-card bg-orange" onclick="switchPage('device-ops')"><div class="row"><div><div class="label">离线设备数量</div><div class="value">7,034</div></div><div class="icon">⚫</div></div></div>
+    <div class="stat-card bg-red" onclick="switchPage('op-log')"><div class="row"><div><div class="label">最近故障记录</div><div class="value">4</div></div><div class="icon">⚠</div></div></div>
+    <div class="stat-card bg-cyan" onclick="switchPage('device-ota')"><div class="row"><div><div class="label">可升级设备数量</div><div class="value">50</div></div><div class="icon">⬆</div></div></div>
+  </div>
+  <div class="dash-row">
+    <div class="dash-card"><div class="header">日活跃量统计 <span class="more" onclick="switchPage('sys-log')">查看详情 →</span></div><div class="body"><div class="area-chart"><svg viewBox="0 0 400 180" preserveAspectRatio="none"><defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3498DB" stop-opacity="0.4"/><stop offset="100%" stop-color="#3498DB" stop-opacity="0.05"/></linearGradient></defs><path d="M0,20 L40,15 L80,25 L120,10 L160,30 L200,18 L240,160 L280,170 L320,175 L360,165 L400,170 L400,180 L0,180 Z" fill="url(#g1)"/><path d="M0,20 L40,15 L80,25 L120,10 L160,30 L200,18 L240,160 L280,170 L320,175 L360,165 L400,170" fill="none" stroke="#2980B9" stroke-width="2"/><g fill="#999" font-size="9"><text x="5" y="175">08-30</text><text x="95" y="175">09-05</text><text x="185" y="175">09-10</text><text x="275" y="175">09-15</text><text x="360" y="175">09-17</text></g><g fill="#999" font-size="9"><text x="0" y="15">1.0</text><text x="0" y="55">0.8</text><text x="0" y="95">0.6</text><text x="0" y="135">0.4</text><text x="0" y="170">0.2</text></g></svg></div></div></div>
+    <div class="dash-card"><div class="header">每日告警统计 <span class="more" onclick="showAlarmHistoryModal()">查看详情 →</span></div><div class="body"><div class="bar-chart" id="alarmBarChart"></div><div style="display:flex;justify-content:space-between;font-size:9px;color:#999;margin-top:4px;"><span>08-30</span><span>09-05</span><span>09-10</span><span>09-15</span><span>09-17</span></div></div></div>
+    <div class="dash-card"><div class="header">未激活/激活统计 <span class="more" onclick="switchPage('device-ops')">查看详情 →</span></div><div class="body"><div class="pie-chart"><div class="pie" style="background:conic-gradient(#3498DB 0% 89.7%,#2ECC71 89.7% 100%);"><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60px;height:60px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text);">11,191</div></div><div class="pie-legend"><div class="item"><div class="dot" style="background:#3498DB;"></div>未激活 89.70%</div><div class="item"><div class="dot" style="background:#2ECC71;"></div>激活 10.30%</div></div></div></div></div>
+  </div>
+  <div class="dash-row-2">
+    <div class="dash-card"><div class="header">设备分布地图 <span class="more" onclick="switchPage('location')">查看详情 →</span></div><div class="body" style="padding:0;"><div class="map-placeholder" style="height:380px;"><div class="map-bg"></div><div class="map-pin blue" style="top:30%;left:40%;"><span class="num">2</span></div><div class="map-pin green" style="top:45%;left:55%;"><span class="num">3</span></div><div class="map-pin green" style="top:55%;left:35%;"><span class="num">4</span></div><div class="map-pin green" style="top:35%;left:65%;"><span class="num">6</span></div><div class="map-pin red" style="top:50%;left:50%;"><span class="num">!</span></div><div style="position:absolute;bottom:8px;right:12px;font-size:10px;color:#999;">天地图 GS(2025)1508号</div></div></div></div>
+    <div class="dash-card"><div class="header">设备健康警示榜 <span class="more" onclick="switchPage('device-ops')">查看详情 →</span></div><div class="body"><div class="info-list" id="healthList"></div></div></div>
+  </div>
+  <div class="dash-row-2">
+    <div class="dash-card"><div class="header">最近故障记录 <span class="more" onclick="showFaultHistoryModal()">查看详情 →</span></div><div class="body"><div class="info-list" id="faultList"></div></div></div>
+    <div class="dash-card"><div class="header">电池循环次数 <span class="more" onclick="switchPage('device-ops')">查看详情 →</span></div><div class="body"><div class="info-list" id="cycleList"></div></div></div>
+  </div>
+</div>
+
+<!-- ====== 设备分配 ====== -->
+<div class="page" id="page-device-assign">
+  <div class="filter-bar">
+    <div class="filter-row">
+      <div class="filter-item"><label>设备IMEI号</label><input class="input" placeholder="请输入设备IMEI号"></div>
+      <div class="filter-item"><label>设备号</label><input class="input" placeholder="请输入设备号"></div>
+      <div class="filter-item"><label>设备型号</label><select class="select"><option value="">请选择设备型号</option><option>ZLB005D1507000_00</option><option>AB3000X_H15S64Ah</option></select></div>
+      <div class="filter-item"><label>分配状态</label><select class="select"><option value="">请选择分配状态</option><option>未分配</option><option>已分配</option><option>已绑定</option></select></div>
+      <div class="filter-item"><label>所属经销商</label><select class="select"><option value="">请选择经销商</option><option>兆联智控</option><option>文襄科技</option></select></div>
+    </div>
+    <div class="filter-row">
+      <div class="filter-item"><label>分配时间</label><input class="input" type="text" placeholder="起始时间 - 结束时间" style="width:240px;"></div>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="toast('查询完成，共匹配 10,854 条数据','success')">🔍 查询</button>
+        <button class="btn btn-warning" onclick="resetFilters(this)">🔄 重置</button>
+        <button class="btn btn-success" onclick="showImportDeviceModal()">📥 导入设备</button>
+        <button class="btn btn-primary" onclick="toast('正在导出数据，请稍候...','info');setTimeout(()=>toast('导出完成，文件已下载','success'),1500)">📤 导出数据</button>
+      </div>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-scroll"><table><thead><tr><th><input type="checkbox" onchange="toggleAll(this,'assignTableBody')"></th><th>序号</th><th>设备号</th><th>设备IMEI号</th><th>设备型号</th><th>所属经销商</th><th>产品类型</th><th>分配状态</th><th>分配时间</th><th>操作</th></tr></thead><tbody id="assignTableBody"></tbody></table></div>
+    <div class="pagination"><div class="page-size">每页显示 <span class="opt active">20</span><span class="opt">50</span><span class="opt">100</span></div><div class="total">共 10,854 条</div><div class="pages"><span class="pg">←</span><span class="pg active">1</span><span class="pg">2</span><span class="pg">3</span><span class="pg">4</span><span class="pg">5</span><span class="pg">...</span><span class="pg">543</span><span class="pg">→</span></div><div class="jump">前往<input type="text" value="1">页<button class="btn btn-sm btn-default">跳转</button></div></div>
+  </div>
+</div>
+
+<!-- ====== 设备运维 ====== -->
+<div class="page" id="page-device-ops">
+  <div class="filter-bar">
+    <div class="filter-row">
+      <div class="filter-item"><label>设备IMEI号</label><input class="input" placeholder="请输入设备IMEI号"></div>
+      <div class="filter-item"><label>告警类型</label><select class="select"><option value="">请选择告警类型</option><option>过压告警</option><option>过流告警</option><option>过温告警</option><option>低压告警</option></select></div>
+      <div class="filter-item"><label>故障类型</label><select class="select"><option value="">请选择故障类型</option><option>充电机高温故障</option><option>限流故障</option><option>热敏电阻故障</option><option>CAN发送故障</option></select></div>
+      <div class="filter-item"><label>设备类型</label><select class="select"><option value="">请选择设备类型</option><option>ZLB005D1507000_00</option><option>AB3000X_H15S64Ah</option></select></div>
+      <div class="filter-item"><label>设备状态</label><select class="select"><option value="">请选择设备状态</option><option>在线</option><option>离线</option><option>未激活</option><option>工作中</option></select></div>
+    </div>
+    <div class="filter-row">
+      <div class="filter-item"><label>产品类型</label><select class="select"><option value="">请选择产品类型</option><option>家庭储能BMS</option><option>铅改锂储能BMS</option><option>工商业储能BMS</option></select></div>
+      <div class="filter-item"><label>分配时间</label><input class="input" placeholder="起始时间 - 结束时间" style="width:240px;"></div>
+      <div class="btn-group">
+        <button class="btn btn-default" onclick="toast('查询完成，共匹配 10,854 条数据','success')">🔍 查询</button>
+        <button class="btn btn-warning" onclick="resetFilters(this)">🔄 重置</button>
+        <button class="btn btn-primary" onclick="showDeviceConfigModal()">⚙ 设备参数设置</button>
+        <div class="dropdown-wrap"><button class="btn btn-cyan" onclick="toggleDropdown(this)">更多 ▼</button><div class="dropdown-menu"><div class="dd-item" onclick="toast('已导出选中的设备数据','success');closeAllDropdowns()">📤 导出选中数据</div><div class="dd-item" onclick="toast('批量锁定已选中设备','info');closeAllDropdowns()">🔒 批量锁定</div><div class="dd-item" onclick="toast('批量解绑已选中设备','info');closeAllDropdowns()">🔓 批量解绑</div><div class="dd-item" onclick="toast('已发送同步数据请求','info');closeAllDropdowns()">🔄 同步数据</div></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-scroll"><table><thead><tr><th><input type="checkbox" onchange="toggleAll(this,'opsTableBody')"></th><th>序号 ↑↓</th><th>设备号 ↑↓</th><th>设备IMEI号 ↑↓</th><th>设备型号 ↑↓</th><th>所属经销商 ↑↓</th><th>产品类型 ↑↓</th><th>设备状态 ↑↓</th><th>总电压(mV)</th><th>操作</th></tr></thead><tbody id="opsTableBody"></tbody></table></div>
+    <div class="pagination"><div class="page-size">每页显示 <span class="opt active">20</span><span class="opt">50</span><span class="opt">100</span><span class="opt">150</span></div><div class="total">共 10,854 条</div><div class="pages"><span class="pg">←</span><span class="pg active">1</span><span class="pg">2</span><span class="pg">3</span><span class="pg">4</span><span class="pg">5</span><span class="pg">6</span><span class="pg">...</span><span class="pg">543</span><span class="pg">→</span></div><div class="jump">前往<input type="text" value="1">页<button class="btn btn-sm btn-default">跳转</button></div></div>
+  </div>
+</div>
+
+<!-- ====== 设备参数 ====== -->
+<div class="page" id="page-device-params">
+  <div class="alert alert-warning" id="paramsAlert">⚠ 请求操作BMS设备超时。上次请求时间：2026-09-18 16:25:30</div>
+  <div class="detail-panel">
+    <div class="btn-group" style="margin-bottom:16px;flex-wrap:wrap;">
+      <button class="btn btn-success" onclick="refreshDeviceData()">🔄 刷新数据</button>
+      <button class="btn btn-primary" onclick="showDeviceConfigModal()">⚙ 设备参数设置</button>
+      <button class="btn btn-purple" onclick="confirmAction('设备重启','确认对设备 111273 执行重启操作？设备将在60秒内重新连接。','warning',function(){toast('重启指令已下发，设备将在60秒后重新上线','success');hideAlert()})">🔁 设备重启</button>
+      <button class="btn btn-warning" onclick="confirmAction('GPS模块重启','确认对设备 111273 执行GPS模块重启？','warning',function(){toast('GPS模块重启指令已下发','success')})">📡 GPS模块重启</button>
+      <button class="btn btn-default" onclick="confirmAction('唤醒设备','确认唤醒设备 111273 ？','info',function(){toast('唤醒指令已下发','success')})">⏰ 唤醒设备</button>
+      <button class="btn btn-primary" onclick="confirmAction('故障消除','确认消除设备 111273 当前所有故障记录？此操作不可撤销。','warning',function(){toast('故障消除指令已下发','success');clearFaults()})">🔧 故障消除</button>
+      <button class="btn btn-danger" onclick="confirmAction('设备休眠','确认对设备 111273 执行休眠操作？设备将进入低功耗模式。','warning',function(){toast('休眠指令已下发','success')})">💤 设备休眠</button>
+      <button class="btn btn-cyan" onclick="showHistoryModal()">📋 历史记录</button>
+    </div>
+    <div class="section-title">设备基础信息</div>
+    <div class="detail-grid" id="paramsInfoGrid"></div>
+  </div>
+  <div class="detail-panel">
+    <div class="section-title">开关状态</div>
+    <div class="switch-grid" id="switchGrid"></div>
+    <div class="section-title" style="margin-top:16px;">电压信息</div>
+    <div class="voltage-row"><div class="voltage-box"><div class="label">最高电压</div><div class="val">- mV</div></div><div class="voltage-box"><div class="label">最低电压</div><div class="val">- mV</div></div><div class="voltage-box"><div class="label">相差压值</div><div class="val">- mV</div></div></div>
+  </div>
+</div>
+
+<!-- ====== 设备OTA ====== -->
+<div class="page" id="page-device-ota">
+  <div class="sub-tabs"><div class="sub-tab active" data-ota-tab="firmware">固件管理</div><div class="sub-tab" data-ota-tab="task">升级任务</div><div class="sub-tab" data-ota-tab="strategy">升级策略</div></div>
+  <div id="ota-firmware">
+    <div class="filter-bar"><div class="filter-row"><div class="btn-group"><button class="btn btn-primary" onclick="showFirmwareModal('add')">➕ 新增固件</button><button class="btn btn-default" onclick="toast('正在导出固件列表...','info');setTimeout(()=>toast('导出完成','success'),1200)">📤 导出数据</button></div></div></div>
+    <div class="table-wrap"><div class="table-scroll"><table><thead><tr><th>序号</th><th>固件名称</th><th>固件版本</th><th>设备类型</th><th>固件大小(MB)</th><th>上传时间</th><th>状态</th><th>操作</th></tr></thead><tbody id="firmwareTableBody"></tbody></table></div></div>
+  </div>
+  <div id="ota-task" style="display:none;">
+    <div class="filter-bar"><div class="filter-row"><div class="filter-item"><label>任务名称</label><input class="input" placeholder="请输入任务名称"></div><div class="filter-item"><label>任务状态</label><select class="select"><option value="">请选择任务状态</option><option>待执行</option><option>执行中</option><option>已完成</option><option>已取消</option></select></div><div class="btn-group"><button class="btn btn-default" onclick="toast('查询完成','success')">🔍 查询</button><button class="btn btn-warning" onclick="resetFilters(this)">🔄 重置</button><button class="btn btn-primary" onclick="showOtaTaskModal('add')">➕ 新建任务</button></div></div></div>
+    <div class="table-wrap"><div class="table-scroll"><table><thead><tr><th>序号</th><th>任务名称</th><th>固件版本</th><th>目标设备数</th><th>已升级</th><th>失败数</th><th>进度</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead><tbody id="otaTaskTableBody"></tbody></table></div></div>
+  </div>
+  <div id="ota-strategy" style="display:none;">
+    <div class="filter-bar"><div class="filter-row"><div class="btn-group"><button class="btn btn-primary" onclick="showOtaStrategyModal('add')">➕ 新建策略</button></div></div></div>
+    <div class="table-wrap"><div class="table-scroll"><table><thead><tr><th>序号</th><th>策略名称</th><th>升级方式</th><th>生效时段</th><th>最大并发数</th><th>超时时间(分)</th><th>状态</th><th>操作</th></tr></thead><tbody id="otaStrategyTableBody"></tbody></table></div></div>
+  </div>
+</div>
+
+<!-- ====== 失效设备 ====== -->
+<div class="page" id="page-device-failed">
+  <div class="filter-bar"><div class="filter-row">
+    <div class="filter-item"><label>设备IMEI号</label><input class="input" placeholder="请输入设备IMEI号"></div>
+    <div class="filter-item"><label>失效类型</label><select class="select"><option value="">请选择失效类型</option><option>硬件故障</option><option>通信中断</option><option>人为失效</option><option>长期离线</option></select></div>
+    <div class="filter-item"><label>所属经销商</label><select class="select"><option value="">请选择经销商</option><option>兆联智控</option><option>文襄科技</option></select></div>
+    <div class="filter-item"><label>失效时间</label><input class="input" placeholder="起始时间 - 结束时间" style="width:240px;"></div>
+    <div class="btn-group"><button class="btn btn-default" onclick="toast('查询完成，共匹配 327 条数据','success')">🔍 查询</button><button class="btn btn-warning" onclick="resetFilters(this)">🔄 重置</button><button class="btn btn-primary" onclick="toast('正在导出...','info');setTimeout(()=>toast('导出完成','success'),1200)">📤 导出数据</button></div>
+  </div></div>
+  <div class="table-wrap"><div class="table-scroll"><table><thead><tr><th><input type="checkbox" onchange="toggleAll(this,'failedTableBody')"></th><th>序号</th><th>设备号</th><th>设备IMEI号</th><th>设备型号</th><th>所属经销商</th><th>失效类型</th><th>失效原因</th><th>失效时间</th><th>操作</th></tr></thead><tbody id="failedTableBody"></tbody></table></div>
+  <div class="pagination"><div class="page-size">每页显示 <span class="opt active">20</span><span class="opt">50</span><span class="opt">100</span></div><div class="total">共 327 条</div><div class="pages"><span class="pg">←</span><span class="pg active">1</span><span class="pg">2</span><span class="pg">3</span><span class="pg">...</span><span class="pg">17</span><span class="pg">→</span></div><div class="jump">前往<input type="text" value="1">页<button class="btn btn-sm btn-default">跳转</button></div></div></div>
+</div>
+
+<!-- ====== 定位监控 ====== -->
+<div class="page" id="page-location">
+  <div class="loc-layout">
+    <div class="loc-info">
+      <div class="section-title">设备信息</div>
+      <div class="filter-row" style="margin-bottom:8px;"><div class="filter-item"><label>设备号</label><input class="input" id="locSearchInput" value="111224" style="width:120px;"></div><button class="btn btn-primary btn-sm" onclick="toast('设备 111224 搜索成功','success')">🔍 搜索</button></div>
+      <div class="filter-item" style="margin-bottom:12px;"><select class="select" style="width:100%;" onchange="toast('已切换设备','info')"><option>1 / ZLB005D1507000_00 / 111224</option><option>2 / AB3000X_H15S64Ah / 111223</option><option>3 / ZLB005D1507000_00 / 111222</option></select></div>
+      <div class="kv-list" id="locDeviceInfo"></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="toast('已请求设备GPS定位','info');setTimeout(()=>toast('定位成功：22.656432, 113.923456','success'),1000)">📍 定位</button>
+    </div>
+    <div class="loc-map"><div class="map-area"><div class="grid-bg"></div><div class="map-pin green" style="top:45%;left:50%;"><span class="num">●</span></div><div style="position:absolute;bottom:8px;right:12px;font-size:10px;color:#999;">天地图 GS(2025)1508号 - 甲测资字11110974</div><div style="position:absolute;top:12px;left:12px;background:rgba(255,255,255,0.9);padding:8px 12px;border-radius:6px;font-size:12px;box-shadow:0 1px 4px rgba(0,0,0,0.1);"><div>设备号：111224</div><div style="color:var(--success);">● 在线</div></div></div></div>
+  </div>
+</div>
+
+<!-- ====== 经销商管理 ====== -->
+<div class="page" id="page-dealer">
+  <div class="filter-bar"><div class="filter-row">
+    <div class="filter-item"><label>经销商名称</label><input class="input" placeholder="请输入经销商名称"></div>
+    <div class="filter-item"><label>联系人</label><input class="input" placeholder="请输入联系人"></div>
+    <div class="filter-item"><label>状态</label><select class="select"><option value="">请选择状态</option><option>启用</option><option>停用</option></select></div>
+    <div class="btn-group"><button class="btn btn-default" onclick="toast('查询完成，共匹配 15 条数据','success')">🔍 查询</button><button class="btn btn-warning" onclick="resetFilters(this)">🔄 重置</button><button class="btn btn-primary" onclick="showDealerModal('add')">➕ 新增经销商</button></div>
+  </div></div>
+  <div class="table-wrap"><div class="table-scroll"><table><thead><tr><th>序号</th><th>经销商编码</th><th>经销商名称</th><th>联系人</th><th>联系电话</th><th>设备总数</th><th>在线设备</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead><tbody id="dealerTableBody"></tbody></table></div>
+  <div class="pagination"><div class="page-size">每页显示 <span class="opt active">20</span><span class="opt">50</span></div><div class="total">共 15 条</div><div class="pages"><span class="pg">←</span><span class="pg active">1</span><span class="pg">→</span></div></div></div>
+</div>
+
+<!-- ====== 经销商账户管理 ====== -->
+<div class="page" id="page-dealer-account">
+  <div class="filter-bar"><div class="filter-row">
+    <div class="filter-item"><label>账户名</label><input class="input" placeholder="请输入账户名"></div>
+    <div class="filter-item"><label>所属经销商</label><select class="select"><option value="">请选择经销商</option><option>兆联智控</option><option>文襄科技</option></select></div>
+    <div class="filter-item"><label>状态</label><select class="select"><option value="">请选择状态</option><option>启用</option><option>停用</option><option>锁定</option></select></div>
+    <div class="btn-group"><button class="btn btn-default" onclick="toast('查询完成，共匹配 48 条数据','success')">🔍 查询</button><button class="btn btn-warning" onclick="resetFilters(this)">🔄 重置</button><button class="btn btn-primary" onclick="showDealerAccountModal('add')">➕ 新增账户</button></div>
+  </div></div>
+  <div class="table-wrap"><div class="table-scroll"><table><thead><tr><th>序号</th><th>账户名</th><th>所属经销商</th><th>角色</th><th>手机号</th><th>邮箱</th><th>最后登录时间</th><th>状态</th><th>操作</th></tr></thead><tbody id="dealerAccountTableBody"></tbody></table></div>
+  <div class="pagination"><div class="page-size">每页显示 <span class="opt active">20</span><span class="opt">50</span></div><div class="total">共 48 条</div><div class="pages"><span class="pg">←</span><span class="pg active">1</span><span class="pg">2</span><span class="pg">3</span><span class="pg">→</span></div></div></div>
+</div>
+
+<!-- ====== 角色管理 ====== -->
+<div class="page" id="page-role">
+  <div class="sub-tabs"><div class="sub-tab active" data-role-tab="perm">角色-功能权限</div><div class="sub-tab" data-role-tab="staff">角色-员工列表</div></div>
+  <div id="role-perm-panel"><div class="role-layout">
+    <div class="role-list-panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-weight:600;font-size:14px;">角色列表</span><button class="btn btn-primary btn-sm" onclick="showRoleModal('add')">➕ 新增角色</button></div><div id="roleList"></div></div>
+    <div class="role-perm-panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><label><input type="checkbox" checked> 权限列表</label><div class="btn-group"><button class="btn btn-default btn-sm" onclick="toggleAllPerm(true)">全选</button><button class="btn btn-default btn-sm" onclick="toggleAllPerm(false)">取消全选</button><button class="btn btn-primary btn-sm" onclick="toast('权限配置已保存','success')">💾 保存</button></div></div><div class="perm-tree" id="permTree"></div></div>
+  </div></div>
+  <div id="role-staff-panel" style="display:none;">
+    <div class="filter-bar"><div class="filter-row"><div class="filter-item"><label>用户名</label><input class="input" placeholder="请输入用户名"></div><div class="filter-item"><label>角色</label><select class="select"><option value="">请选择角色</option><option>平台管理员</option><option>经销商管理员</option><option>经销商操作员</option><option>普通测试员</option></select></div><div class="btn-group"><button class="btn btn-default" onclick="toast('查询完成','success')">🔍 查询</button><button class="btn btn-warning" onclick="resetFilters(this)">🔄 重置</button><button class="btn btn-primary" onclick="showStaffModal('add')">➕ 新增员工</button></div></div></div>
+    <div class="table-wrap"><div class="table-scroll"><table><thead><tr><th>序号</th><th>用户名</th><th>真实姓名</th><th>角色</th><th>所属经销商</th><th>手机号</th><th>状态</th><th>操作</th></tr></thead><tbody id="staffTableBody"></tbody></table></div></div>
+  </div>
+</div>
+
+<!-- ====== 系统配置 ====== -->
+<div class="page" id="page-settings">
+  <div class="detail-panel"><div class="section-title">基础配置</div><div class="form-row"><div class="form-group"><label>系统名称</label><input class="input" value="BMS管理系统"></div><div class="form-group"><label>系统版本</label><input class="input" value="V3.2.1"></div><div class="form-group"><label>超时时间(秒)</label><input class="input" type="number" value="30"></div><div class="form-group"><label>心跳间隔(秒)</label><input class="input" type="number" value="60"></div><div class="form-group"><label>数据保留天数</label><input class="input" type="number" value="180"></div><div class="form-group"><label>地图API密钥</label><input class="input" value="******"></div></div></div>
+  <div class="detail-panel"><div class="section-title">通知配置</div><div class="form-row"><div class="form-group"><label>邮件通知</label><select class="select"><option>启用</option><option>停用</option></select></div><div class="form-group"><label>短信通知</label><select class="select"><option>启用</option><option>停用</option></select></div><div class="form-group"><label>告警邮箱</label><input class="input" value="alarm@bms-system.com"></div><div class="form-group"><label>告警手机号</label><input class="input" value="13888888888"></div></div><div class="btn-group" style="margin-top:8px;"><button class="btn btn-primary" onclick="toast('系统配置已保存','success')">💾 保存配置</button><button class="btn btn-default" onclick="confirmAction('恢复默认','确认恢复所有系统配置到默认值？此操作不可撤销。','warning',function(){toast('已恢复默认配置','success')})">🔄 恢复默认</button></div></div>
+</div>
+<!-- ====== MQTT配置 ====== -->
+<div class="page" id="page-settings-mqtt">
+  <div class="detail-panel"><div class="section-title">MQTT Broker 配置</div><div class="form-row"><div class="form-group"><label>Broker地址</label><input class="input" value="mqtt://broker.bms-system.com"></div><div class="form-group"><label>Broker端口</label><input class="input" type="number" value="1883"></div><div class="form-group"><label>SSL端口</label><input class="input" type="number" value="8883"></div><div class="form-group"><label>WebSocket端口</label><input class="input" type="number" value="8084"></div><div class="form-group"><label>用户名</label><input class="input" value="bms-admin"></div><div class="form-group"><label>密码</label><input class="input" type="password" value="******"></div></div></div>
+  <div class="detail-panel"><div class="section-title">Topic 配置</div><div class="form-row"><div class="form-group"><label>设备数据上报Topic前缀</label><input class="input" value="bms/device/{imei}/data"></div><div class="form-group"><label>设备心跳Topic前缀</label><input class="input" value="bms/device/{imei}/heartbeat"></div><div class="form-group"><label>设备告警Topic前缀</label><input class="input" value="bms/device/{imei}/alarm"></div><div class="form-group"><label>命令下发Topic前缀</label><input class="input" value="bms/device/{imei}/cmd"></div><div class="form-group"><label>GPS上报Topic前缀</label><input class="input" value="bms/device/{imei}/gps"></div><div class="form-group"><label>OTA状态Topic前缀</label><input class="input" value="bms/device/{imei}/ota/status"></div></div><div class="form-row"><div class="form-group"><label>QoS等级</label><select class="select"><option>0 - 最多一次</option><option selected>1 - 至少一次</option><option>2 - 恰好一次</option></select></div><div class="form-group"><label>离线消息保留</label><select class="select"><option>是</option><option selected>否</option></select></div></div><div class="btn-group" style="margin-top:8px;"><button class="btn btn-primary" onclick="toast('MQTT配置已保存','success')">💾 保存配置</button><button class="btn btn-cyan" onclick="testMqttConnection()">🔗 测试连接</button></div></div>
+</div>
+<!-- ====== 阈值配置 ====== -->
+<div class="page" id="page-settings-threshold">
+  <div class="detail-panel"><div class="section-title">电压阈值配置</div><div class="form-row"><div class="form-group"><label>单体过压阈值(mV)</label><input class="input" type="number" value="3650"></div><div class="form-group"><label>单体低压阈值(mV)</label><input class="input" type="number" value="2500"></div><div class="form-group"><label>单体过压保护(mV)</label><input class="input" type="number" value="3700"></div><div class="form-group"><label>单体低压保护(mV)</label><input class="input" type="number" value="2400"></div><div class="form-group"><label>压差告警阈值(mV)</label><input class="input" type="number" value="100"></div><div class="form-group"><label>总电压过压(V)</label><input class="input" type="number" value="58"></div></div></div>
+  <div class="detail-panel"><div class="section-title">温度阈值配置</div><div class="form-row"><div class="form-group"><label>电池高温告警(℃)</label><input class="input" type="number" value="55"></div><div class="form-group"><label>电池低温告警(℃)</label><input class="input" type="number" value="-20"></div><div class="form-group"><label>MOS高温告警(℃)</label><input class="input" type="number" value="75"></div><div class="form-group"><label>充电机高温告警(℃)</label><input class="input" type="number" value="65"></div></div></div>
+  <div class="detail-panel"><div class="section-title">SOC/SOH 配置</div><div class="form-row"><div class="form-group"><label>SOC低电告警(%)</label><input class="input" type="number" value="20"></div><div class="form-group"><label>SOC极低保护(%)</label><input class="input" type="number" value="10"></div><div class="form-group"><label>SOH低告警(%)</label><input class="input" type="number" value="70"></div><div class="form-group"><label>循环次数告警</label><input class="input" type="number" value="500"></div></div><div class="btn-group" style="margin-top:8px;"><button class="btn btn-primary" onclick="toast('阈值配置已保存','success')">💾 保存阈值</button><button class="btn btn-warning" onclick="confirmAction('批量下发阈值','确认将当前阈值配置批量下发给所有在线设备？','info',function(){toast('阈值配置已下发至 3,617 台在线设备','success')})">📤 批量下发</button></div></div>
+</div>
+<!-- ====== 系统日志 ====== -->
+<div class="page" id="page-sys-log">
+  <div class="filter-bar"><div class="filter-row"><div class="filter-item"><label>日志级别</label><select class="select"><option value="">全部</option><option>INFO</option><option>WARN</option><option>ERROR</option><option>DEBUG</option></select></div><div class="filter-item"><label>日志模块</label><select class="select"><option value="">全部</option><option>设备通信</option><option>MQTT服务</option><option>数据解析</option><option>定时任务</option><option>用户认证</option></select></div><div class="filter-item"><label>日志时间</label><input class="input" placeholder="起始时间 - 结束时间" style="width:240px;"></div><div class="btn-group"><button class="btn btn-default" onclick="toast('查询完成，共匹配 23,456 条日志','success')">🔍 查询</button><button class="btn btn-warning" onclick="resetFilters(this)">🔄 重置</button><button class="btn btn-danger" onclick="confirmAction('清空日志','确认清空所有系统日志？此操作不可撤销！','danger',function(){toast('系统日志已清空','success')})">🗑 清空日志</button></div></div></div>
+  <div class="table-wrap"><div class="table-scroll"><table><thead><tr><th>序号</th><th>日志级别</th><th>模块</th><th>日志内容</th><th>设备IMEI</th><th>记录时间</th><th>操作</th></tr></thead><tbody id="sysLogTableBody"></tbody></table></div>
+  <div class="pagination"><div class="page-size">每页显示 <span class="opt active">20</span><span class="opt">50</span><span class="opt">100</span></div><div class="total">共 23,456 条</div><div class="pages"><span class="pg">←</span><span class="pg active">1</span><span class="pg">2</span><span class="pg">3</span><span class="pg">...</span><span class="pg">1173</span><span class="pg">→</span></div><div class="jump">前往<input type="text" value="1">页<button class="btn btn-sm btn-default">跳转</button></div></div></div>
+</div>
+<!-- ====== 操作日志 ====== -->
+<div class="page" id="page-op-log">
+  <div class="filter-bar"><div class="filter-row">
+    <div class="filter-item"><label>用户名</label><input class="input" placeholder="请输入用户名"></div>
+    <div class="filter-item"><label>操作时间</label><input class="input" placeholder="起始时间 - 结束时间" style="width:240px;"></div>
+    <div class="filter-item"><label>操作结果</label><div style="display:flex;gap:4px;" id="opResultFilter"><button class="btn btn-sm btn-primary" data-result="" style="background:var(--primary);color:#fff;">全部</button><button class="btn btn-sm btn-default" data-result="成功">成功</button><button class="btn btn-sm btn-default" data-result="失败">失败</button></div></div>
+    <div class="btn-group"><button class="btn btn-default" onclick="toast('查询完成，共匹配 4,235 条操作日志','success')">🔍 搜索</button><button class="btn btn-warning" onclick="resetFilters(this)">🔄 重置</button><div class="dropdown-wrap"><button class="btn btn-cyan" onclick="toggleDropdown(this)">⚙ 更多 ▼</button><div class="dropdown-menu"><div class="dd-item" onclick="toast('正在导出操作日志...','info');setTimeout(()=>toast('导出完成','success'),1200);closeAllDropdowns()">📤 导出日志</div><div class="dd-item" onclick="confirmAction('批量删除','确认删除当前筛选条件下的操作日志？','warning',function(){toast('已删除','success')});closeAllDropdowns()">🗑 批量删除</div></div></div></div>
+  </div></div>
+  <div class="table-wrap"><div class="table-scroll"><table><thead><tr><th>用户名 ↑↓</th><th>角色</th><th>操作模块</th><th>操作内容</th><th>权限路径</th><th>操作IP</th><th>IP区域</th><th>客户端信息</th><th>请求结果</th><th>操作时间 ↑↓</th><th>操作</th></tr></thead><tbody id="opLogTableBody"></tbody></table></div>
+  <div class="pagination"><div class="page-size">每页显示 <span class="opt active">20</span><span class="opt">50</span><span class="opt">100</span><span class="opt">150</span></div><div class="total">共 4,235 条</div><div class="pages"><span class="pg">←</span><span class="pg active">1</span><span class="pg">2</span><span class="pg">3</span><span class="pg">4</span><span class="pg">5</span><span class="pg">6</span><span class="pg">...</span><span class="pg">212</span><span class="pg">→</span></div><div class="jump">前往<input type="text" value="1">页<button class="btn btn-sm btn-default">跳转</button></div></div></div>
+</div>
+<!-- ====== 登录锁定 ====== -->
+<div class="page" id="page-login-lock">
+  <div class="filter-bar"><div class="filter-row"><div class="filter-item"><label>用户名</label><input class="input" placeholder="请输入用户名"></div><div class="filter-item"><label>IP地址</label><input class="input" placeholder="请输入IP地址"></div><div class="filter-item"><label>锁定状态</label><select class="select"><option value="">全部</option><option>已锁定</option><option>已解锁</option></select></div><div class="btn-group"><button class="btn btn-default" onclick="toast('查询完成，共匹配 12 条记录','success')">🔍 查询</button><button class="btn btn-warning" onclick="resetFilters(this)">🔄 重置</button></div></div></div>
+  <div class="table-wrap"><div class="table-scroll"><table><thead><tr><th>序号</th><th>用户名</th><th>IP地址</th><th>失败次数</th><th>锁定时间</th><th>预计解锁时间</th><th>状态</th><th>操作</th></tr></thead><tbody id="loginLockTableBody"></tbody></table></div>
+  <div class="pagination"><div class="page-size">每页显示 <span class="opt active">20</span><span class="opt">50</span></div><div class="total">共 12 条</div><div class="pages"><span class="pg">←</span><span class="pg active">1</span><span class="pg">→</span></div></div></div>
+</div>
+    </div>
+  </div>
+</div>
+<!-- Modal Container -->
+<div class="modal-overlay" id="modalOverlay"><div class="modal" id="modalBox"></div></div>
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ========== Navigation ==========
+const pageNames={'dashboard':'首页','device-assign':'设备分配','device-ops':'设备运维','device-ota':'设备OTA','device-failed':'失效设备','device-params':'设备参数','location':'定位监控','dealer':'经销商管理','dealer-account':'经销商账户管理','role':'角色管理','settings':'系统配置','settings-mqtt':'MQTT配置','settings-threshold':'阈值配置','sys-log':'系统日志','op-log':'操作日志','login-lock':'登录锁定'};
+const crumbMap={'device-assign':['设备管理','设备分配'],'device-ops':['设备管理','设备运维'],'device-ota':['设备管理','设备OTA'],'device-failed':['设备管理','失效设备'],'device-params':['设备管理','设备运维','设备参数'],'location':['定位监控'],'dealer':['商户管理','经销商管理'],'dealer-account':['商户管理','经销商账户管理'],'role':['商户管理','角色管理'],'settings':['系统设置','系统配置'],'settings-mqtt':['系统设置','MQTT配置'],'settings-threshold':['系统设置','阈值配置'],'sys-log':['运维管理','系统日志'],'op-log':['运维管理','操作日志'],'login-lock':['运维管理','登录锁定']};
+function switchPage(page){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));var t=document.getElementById('page-'+page);if(t)t.classList.add('active');document.querySelectorAll('.sidebar .nav-page').forEach(m=>m.classList.remove('active'));var am=document.querySelector('.sidebar .nav-page[data-page="'+page+'"]');if(am)am.classList.add('active');var c=crumbMap[page]||[];document.getElementById('crumbText').innerHTML=c.length?c.map((x,i)=>i<c.length-1?x+' <span class="sep">/</span> ':x).join(''):'首页';updateTabs(page);var ct=document.getElementById('content');if(ct)ct.scrollTop=0}
+function updateTabs(page){var tabs=document.getElementById('topbarTabs');var tab=tabs.querySelector('.tab[data-page="'+page+'"]');if(!tab){tab=document.createElement('div');tab.className='tab';tab.dataset.page=page;tab.innerHTML=pageNames[page]+'<span class="close">×</span>';tab.addEventListener('click',function(e){if(e.target.classList.contains('close')){tab.remove();switchPage('dashboard')}else switchPage(page)});tabs.appendChild(tab)}tabs.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));tab.classList.add('active')}
+document.querySelectorAll('.nav-page').forEach(el=>el.addEventListener('click',()=>switchPage(el.dataset.page)));
+document.querySelectorAll('.nav-toggle').forEach(el=>el.addEventListener('click',()=>{var sub=el.nextElementSibling;var a=el.querySelector('.arrow');sub.classList.toggle('open');if(a)a.classList.toggle('open')}));
+// ========== Toast ==========
+function toast(msg,type){type=type||'info';var c=document.getElementById('toastContainer');var t=document.createElement('div');t.className='toast toast-'+type;var icon=type==='success'?'✅':type==='error'?'❌':type==='warning'?'⚠️':'ℹ️';t.innerHTML=icon+' '+msg;c.appendChild(t);setTimeout(function(){t.classList.add('hide');setTimeout(function(){t.remove()},300)},3000)}
+// ========== Modal ==========
+function showModal(opts){var o=opts||{};var box=document.getElementById('modalBox');var ov=document.getElementById('modalOverlay');box.className='modal'+(o.size?' modal-'+o.size:'');var html='<div class="modal-header"><span>'+(o.title||'')+'</span><span class="close" onclick="hideModal()">×</span></div>';html+='<div class="modal-body">'+(o.body||'')+'</div>';if(o.footer!==false){html+='<div class="modal-footer">'+(o.footer||'<button class="btn btn-default" onclick="hideModal()">关闭</button>')+'</div>'}box.innerHTML=html;ov.classList.add('show');if(o.onShow)o.onShow()}
+function hideModal(){document.getElementById('modalOverlay').classList.remove('show');document.getElementById('modalBox').innerHTML=''}
+document.getElementById('modalOverlay').addEventListener('click',function(e){if(e.target===this)hideModal()});
+function confirmAction(title,desc,type,onConfirm){var icon=type==='danger'?'danger':type==='warning'?'warning':'info';var iconText=type==='danger'?'⚠':type==='warning'?'⚠':'ℹ';showModal({title:'操作确认',size:'sm',body:'<div class="confirm-body"><div class="confirm-icon '+icon+'">'+iconText+'</div><div class="confirm-text"><div class="title">'+title+'</div><div class="desc">'+desc+'</div></div></div>',footer:'<button class="btn btn-default" onclick="hideModal()">取消</button><button class="btn '+(type==='danger'?'btn-danger':'btn-primary')+'" onclick="hideModal();('+onConfirm.toString()+')()">确认</button>'})}
+// ========== Dropdown ==========
+function toggleDropdown(btn){var menu=btn.nextElementSibling;var isOpen=menu.classList.contains('show');closeAllDropdowns();if(!isOpen)menu.classList.add('show')}
+function closeAllDropdowns(){document.querySelectorAll('.dropdown-menu.show').forEach(m=>m.classList.remove('show'))}
+document.addEventListener('click',function(e){if(!e.target.closest('.dropdown-wrap'))closeAllDropdowns()});
+// ========== Helpers ==========
+function resetFilters(btn){var bar=btn.closest('.filter-bar');if(bar){bar.querySelectorAll('input').forEach(i=>{if(i.type==='text')i.value=''});bar.querySelectorAll('select').forEach(s=>s.selectedIndex=0)}toast('筛选条件已重置','info')}
+function toggleAll(cb,tbodyId){var rows=document.getElementById(tbodyId).querySelectorAll('input[type=checkbox]');rows.forEach(r=>r.checked=cb.checked)}
+function hideAlert(){var a=document.getElementById('paramsAlert');if(a)a.style.display='none'}
+function clearFaults(){document.getElementById('paramsAlert')&&(document.getElementById('paramsAlert').style.display='none')}
+function refreshDeviceData(){toast('正在请求设备数据...','info');setTimeout(function(){toast('设备数据已刷新','success');var grid=document.getElementById('paramsInfoGrid');if(grid){var items=grid.querySelectorAll('.detail-item .val');if(items[1])items[1].textContent='16';if(items[4])items[4].textContent='52.3';if(items[5])items[5].textContent='10.2';if(items[6])items[6].textContent='85.5%';if(items[8])items[8].textContent='92.0%';if(items[9])items[9].textContent='328';if(items[10])items[10].textContent='35.2℃';if(items[12])items[12].textContent='28.5℃'}var vbs=document.querySelectorAll('.voltage-box .val');if(vbs[0])vbs[0].textContent='3272 mV';if(vbs[1])vbs[1].textContent='3263 mV';if(vbs[2])vbs[2].textContent='9 mV';var sw=document.getElementById('switchGrid');if(sw){var st=sw.querySelectorAll('.status');st.forEach(function(s,idx){if(idx<4){s.className='status on';s.textContent='开启'}else{s.className='status off';s.textContent='关闭'}})}},1500)}
+function testMqttConnection(){toast('正在测试MQTT连接...','info');setTimeout(function(){toast('MQTT连接测试成功，延迟 23ms','success')},1500)}
+function toggleAllPerm(check){document.querySelectorAll('.perm-check').forEach(c=>c.checked=check)}
+// ========== Sub-tab switches ==========
+document.querySelectorAll('[data-ota-tab]').forEach(tab=>tab.addEventListener('click',()=>{document.querySelectorAll('[data-ota-tab]').forEach(t=>t.classList.remove('active'));tab.classList.add('active');['firmware','task','strategy'].forEach(s=>{document.getElementById('ota-'+s).style.display=s===tab.dataset.otaTab?'block':'none'})}));
+document.querySelectorAll('[data-role-tab]').forEach(tab=>tab.addEventListener('click',()=>{document.querySelectorAll('[data-role-tab]').forEach(t=>t.classList.remove('active'));tab.classList.add('active');document.getElementById('role-perm-panel').style.display=tab.dataset.roleTab==='perm'?'block':'none';document.getElementById('role-staff-panel').style.display=tab.dataset.roleTab==='staff'?'block':'none'}));
+// ========== Op-log result filter ==========
+document.querySelectorAll('#opResultFilter button').forEach(btn=>btn.addEventListener('click',function(){document.querySelectorAll('#opResultFilter button').forEach(b=>{b.className='btn btn-sm btn-default';b.style=''});btn.className='btn btn-sm btn-primary';btn.style='background:var(--primary);color:#fff';toast('已筛选：'+(btn.dataset.result||'全部'),'info')}));
+// ========== Bar Chart ==========
+(function(){var bars=[50,80,120,90,200,350,180,250,650,150,120,80,500,100,90,60,50,40,30];var html=bars.map(function(v,i){return '<div class="bar" style="height:'+(v/700*100)+'%" title="'+v+'次告警" onclick="showAlarmDetailModal('+i+')"></div>'}).join('');document.getElementById('alarmBarChart').innerHTML=html})();
+
+// ========== Dashboard Lists ==========
+(function(){
+var health=[{imei:'864114070050327',val:'0%'},{imei:'868108080100020',val:'70%'},{imei:'868108080100026',val:'70%'},{imei:'868108080100038',val:'70%'},{imei:'868108080100578',val:'70%'},{imei:'868108080100612',val:'68%'},{imei:'868108080100845',val:'65%'}];
+document.getElementById('healthList').innerHTML=health.map(function(d,i){return '<div class="item" onclick="switchPage(\'device-params\')"><div class="rank '+(i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'rank-other')+'">'+(i+1)+'</div><div class="imei">'+d.imei+'</div><div class="val">'+d.val+'</div></div>'}).join('');
+var faults=[{imei:'867584030010156',tag:'tag-danger',type:'充电机高温故障',time:'05-21 14:17'},{imei:'867584030010155',tag:'tag-warning',type:'限流故障',time:'05-21 14:17'},{imei:'868108070183563',tag:'tag-warning',type:'热敏电阻故障',time:'02-04 13:20'},{imei:'864114070055300',tag:'tag-info',type:'CAN发送故障',time:'02-03 21:46'}];
+document.getElementById('faultList').innerHTML=faults.map(function(d,i){return '<div class="item" onclick="showFaultDetailModal(\''+d.imei+'\',\''+d.type+'\')"><div class="rank '+(i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'rank-other')+'">'+(i+1)+'</div><div class="imei">'+d.imei+'</div><span class="tag '+d.tag+'">'+d.type+'</span><div class="time">'+d.time+'</div></div>'}).join('');
+var cycles=[{imei:'860170737687640',val:'328次'},{imei:'860174527011809',val:'295次'},{imei:'860179929515872',val:'271次'},{imei:'860171628340838',val:'245次'},{imei:'860176663308924',val:'198次'}];
+document.getElementById('cycleList').innerHTML=cycles.map(function(d,i){return '<div class="item" onclick="switchPage(\'device-params\')"><div class="rank '+(i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'rank-other')+'">'+(i+1)+'</div><div class="imei">'+d.imei+'</div><div class="val">'+d.val+'</div></div>'}).join('');
+})();
+// ========== Permission Tree ==========
+var permData=[{name:'首页',checked:true,children:[]},{name:'设备管理',checked:true,children:[{name:'设备分配',checked:true,children:[{name:'设备查询',checked:true},{name:'设备导入',checked:false},{name:'分配设备',checked:false},{name:'导出数据',checked:false},{name:'设备删除',checked:false}]},{name:'设备运维',checked:true,children:[{name:'设备锁定',checked:true},{name:'解绑设备',checked:true},{name:'导出数据',checked:true},{name:'设置参数',checked:true},{name:'设备解锁',checked:true},{name:'设备失效',checked:true},{name:'查询设备参数',checked:false}]},{name:'设备OTA',checked:true,children:[{name:'导出数据',checked:true},{name:'启动任务',checked:true},{name:'关闭任务',checked:true},{name:'查看任务',checked:true},{name:'修改任务',checked:true},{name:'删除任务',checked:true},{name:'查询匹配设备数',checked:true},{name:'新增固件',checked:true},{name:'上传固件附件',checked:true},{name:'修改固件',checked:true},{name:'删除固件',checked:true},{name:'新建策略',checked:true},{name:'修改策略',checked:true},{name:'删除策略',checked:true},{name:'新建任务',checked:true}]},{name:'失效设备',checked:true,children:[{name:'导出数据',checked:true},{name:'恢复设备',checked:true}]},{name:'设备参数',checked:true,children:[{name:'刷新数据',checked:true},{name:'设备参数设置',checked:true},{name:'设备重启',checked:true},{name:'GPS模块重启',checked:true},{name:'唤醒设备',checked:true},{name:'故障消除',checked:true},{name:'设备休眠',checked:true},{name:'同步数据',checked:false},{name:'查询设备参数',checked:false}]},{name:'历史记录',checked:true,children:[{name:'查询告警/保护历史',checked:true},{name:'故障历史',checked:false},{name:'设备状态历史',checked:false}]}]},{name:'定位监控',checked:true,children:[]},{name:'商户管理',checked:true,children:[{name:'经销商管理',checked:true,children:[{name:'新增经销商',checked:true},{name:'编辑经销商',checked:true},{name:'删除经销商',checked:true},{name:'查看详情',checked:true}]},{name:'经销商账户管理',checked:true,children:[{name:'新增账户',checked:true},{name:'编辑账户',checked:true},{name:'删除账户',checked:true},{name:'重置密码',checked:true}]},{name:'角色管理',checked:true,children:[{name:'新增角色',checked:true},{name:'编辑角色',checked:true},{name:'删除角色',checked:true},{name:'配置权限',checked:true}]}]},{name:'系统设置',checked:true,children:[{name:'系统配置',checked:true},{name:'MQTT配置',checked:true},{name:'阈值配置',checked:true}]},{name:'运维管理',checked:true,children:[{name:'系统日志',checked:true,children:[{name:'查询日志',checked:true},{name:'清空日志',checked:true}]},{name:'操作日志',checked:true,children:[{name:'查询日志',checked:true},{name:'导出日志',checked:true}]},{name:'登录锁定',checked:true,children:[{name:'解锁账户',checked:true},{name:'查看记录',checked:true}]}]}];
+function renderPermTree(nodes,level){var html='';nodes.forEach(function(node){var chk=node.checked?'checked':'';html+='<div class="perm-node"><div class="row" style="padding-left:'+(level*24)+'px;"><input type="checkbox" class="perm-check" '+chk+'> '+node.name+'</div>';if(node.children&&node.children.length)html+='<div class="child">'+renderPermTree(node.children,level+1)+'</div>';html+='</div>'});return html}
+document.getElementById('permTree').innerHTML=renderPermTree(permData,0);
+// ========== Role List ==========
+var roles=['平台管理员','经销商管理员','经销商操作员','游客用户','普通测试员'];
+document.getElementById('roleList').innerHTML=roles.map(function(r,i){return '<div class="role-item'+(i===0?' active':'')+'" onclick="switchRole(this,\''+r+'\')">'+r+(i>0?'<button class="btn btn-sm btn-danger" style="float:right;padding:2px 8px;" onclick="event.stopPropagation();confirmAction(\'删除角色\',\'确认删除角色「'+r+'」？关联的员工将需要重新分配角色。\',\'danger\',function(){toast(\'角色已删除\',\'success\')})">删除</button>':'')+'</div>'}).join('');
+function switchRole(el,name){document.querySelectorAll('#roleList .role-item').forEach(r=>r.classList.remove('active'));el.classList.add('active');toast('已切换到角色：'+name,'info')}
+// ========== Device Ops Table ==========
+(function(){
+var devices=[{no:111274,imei:'0009888E00CBB34',model:'ZLB005D',dealer:'兆联智控',type:'0',status:'未激活',volt:''},{no:111273,imei:'779F089B2A31D96',model:'ZLB005D',dealer:'兆联智控',type:'0',status:'未激活',volt:''},{no:111272,imei:'0009888E00CB2CC',model:'ZLB005D',dealer:'兆联智控',type:'家庭储能BMS',status:'离线',volt:'80000'},{no:111271,imei:'0009888E00D2DE0',model:'ZLB005D',dealer:'兆联智控',type:'家庭储能BMS',status:'离线',volt:'82300'},{no:111270,imei:'0009888E00D2DDC',model:'ZLB005D',dealer:'文襄科技',type:'家庭储能BMS',status:'离线',volt:'78100'},{no:111269,imei:'0009888E00D2D48',model:'ZLB005D',dealer:'兆联智控',type:'家庭储能BMS',status:'离线',volt:'79800'},{no:111268,imei:'0009888E00D2D04',model:'ZLB005D',dealer:'文襄科技',type:'家庭储能BMS',status:'离线',volt:'80000'},{no:111267,imei:'0009888E00CBAB4',model:'ZLB005D',dealer:'兆联智控',type:'家庭储能BMS',status:'离线',volt:'87300'},{no:111265,imei:'000F09E9E78908C',model:'ZLB005D',dealer:'兆联智控',type:'家庭储能BMS',status:'离线',volt:'4964'},{no:111263,imei:'00058E6C5479E20',model:'ZLB005D',dealer:'兆联智控',type:'家庭储能BMS',status:'离线',volt:'75000'},{no:111237,imei:'000206EF135C4FC',model:'ZLB005D',dealer:'兆联智控',type:'家庭储能BMS',status:'离线',volt:'400'},{no:111236,imei:'00058E6C5479E94',model:'ZLB005D',dealer:'兆联智控',type:'家庭储能BMS',status:'工作中',volt:''},{no:111235,imei:'000F09E9E7890CC',model:'ZLB005D',dealer:'兆联智控',type:'家庭储能BMS',status:'离线',volt:'63700'},{no:111234,imei:'00094A990DBC4B8',model:'ZLB005D',dealer:'兆联智控',type:'家庭储能BMS',status:'离线',volt:''},{no:111233,imei:'864114072893849',model:'AB3000X',dealer:'兆联智控',type:'铅改锂储能BMS',status:'离线',volt:'48600'}];
+var st={未激活:'tag-info',离线:'tag-warning',工作中:'tag-success',在线:'tag-success'};
+document.getElementById('opsTableBody').innerHTML=devices.map(function(d,i){return '<tr><td><input type="checkbox"></td><td>'+(i+1)+'</td><td><span class="cell-link" onclick="switchPage(\'device-params\')">'+d.no+'</span></td><td>'+d.imei+'</td><td>'+d.model+'</td><td>'+d.dealer+'</td><td>'+d.type+'</td><td><span class="tag '+(st[d.status]||'tag-info')+'">'+d.status+'</span></td><td>'+(d.volt||'-')+'</td><td><button class="btn btn-sm btn-warning" onclick="confirmAction(\'设备锁定\',\'确认锁定设备 '+d.imei+' ？锁定后设备将停止充放电。\',\'warning\',function(){toast(\'设备已锁定\',\'success\')})">锁定</button><button class="btn btn-sm btn-danger" onclick="confirmAction(\'设备解绑\',\'确认解绑设备 '+d.imei+' ？解绑后设备将与当前经销商解除关联。\',\'warning\',function(){toast(\'设备已解绑\',\'success\')})">解绑</button><button class="btn btn-sm btn-purple" onclick="confirmAction(\'设备失效\',\'确认将设备 '+d.imei+' 标记为失效？此操作不可撤销。\',\'danger\',function(){toast(\'设备已标记失效\',\'success\')})">失效</button><button class="btn btn-sm btn-success" onclick="switchPage(\'location\')">定位</button></td></tr>'}).join('');
+})();
+// ========== Device Assign Table ==========
+(function(){
+var data=[{no:111274,imei:'0009888E00CBB34',model:'ZLB005D1507000_00',dealer:'兆联智控',type:'家庭储能BMS',status:'已绑定',time:'2026-06-09 09:36:54'},{no:111273,imei:'779F089B2A31D96',model:'ZLB005D1507000_00',dealer:'兆联智控',type:'家庭储能BMS',status:'已分配',time:'2026-06-10 14:22:18'},{no:111272,imei:'0009888E00CB2CC',model:'ZLB005D1507000_00',dealer:'文襄科技',type:'家庭储能BMS',status:'已绑定',time:'2026-06-11 10:05:33'},{no:111271,imei:'0009888E00D2DE0',model:'ZLB005D1507000_00',dealer:'兆联智控',type:'家庭储能BMS',status:'未分配',time:'-'},{no:111270,imei:'0009888E00D2DDC',model:'AB3000X_H15S64Ah',dealer:'文襄科技',type:'家庭储能BMS',status:'已绑定',time:'2026-06-12 16:40:12'},{no:111269,imei:'0009888E00D2D48',model:'ZLB005D1507000_00',dealer:'兆联智控',type:'家庭储能BMS',status:'已分配',time:'2026-06-13 08:15:00'},{no:111268,imei:'0009888E00D2D04',model:'AB3000X_H15S64Ah',dealer:'文襄科技',type:'铅改锂储能BMS',status:'未分配',time:'-'},{no:111267,imei:'0009888E00CBAB4',model:'ZLB005D1507000_00',dealer:'兆联智控',type:'家庭储能BMS',status:'已绑定',time:'2026-06-14 11:20:45'},{no:111265,imei:'000F09E9E78908C',model:'ZLB005D1507000_00',dealer:'兆联智控',type:'家庭储能BMS',status:'未分配',time:'-'},{no:111263,imei:'00058E6C5479E20',model:'ZLB005D1507000_00',dealer:'文襄科技',type:'家庭储能BMS',status:'已分配',time:'2026-06-15 09:30:00'}];
+var tm={已绑定:'tag-success',已分配:'tag-primary',未分配:'tag-info'};
+document.getElementById('assignTableBody').innerHTML=data.map(function(d,i){return '<tr><td><input type="checkbox"></td><td>'+(i+1)+'</td><td><span class="cell-link">'+d.no+'</span></td><td>'+d.imei+'</td><td>'+d.model+'</td><td>'+d.dealer+'</td><td>'+d.type+'</td><td><span class="tag '+tm[d.status]+'">'+d.status+'</span></td><td>'+d.time+'</td><td><button class="btn btn-sm btn-primary" onclick="showAssignModal(\''+d.imei+'\')">分配</button><button class="btn btn-sm btn-danger" onclick="confirmAction(\'设备解绑\',\'确认解绑设备 '+d.imei+' ？\',\'warning\',function(){toast(\'设备已解绑\',\'success\')})">解绑</button></td></tr>'}).join('');
+})();
+
+// ========== Failed Device Table ==========
+(function(){
+var data=[{no:111201,imei:'864114070050327',model:'ZLB005D1507000_00',dealer:'兆联智控',type:'硬件故障',reason:'MOS管损坏',time:'2026-05-20 10:30:00'},{no:111198,imei:'868108080100020',model:'AB3000X_H15S64Ah',dealer:'文襄科技',type:'通信中断',reason:'连续72小时无心跳',time:'2026-05-18 08:00:00'},{no:111185,imei:'867584030010156',model:'ZLB005D1507000_00',dealer:'兆联智控',type:'人为失效',reason:'管理员手动失效',time:'2026-05-15 14:20:00'},{no:111172,imei:'864114070055300',model:'ZLB005D1507000_00',dealer:'文襄科技',type:'长期离线',reason:'连续30天离线',time:'2026-05-10 00:00:00'},{no:111165,imei:'868108070183563',model:'AB3000X_H15S64Ah',dealer:'兆联智控',type:'硬件故障',reason:'温度传感器故障',time:'2026-05-08 16:45:00'},{no:111150,imei:'867584030010155',model:'ZLB005D1507000_00',dealer:'兆联智控',type:'通信中断',reason:'SIM卡欠费',time:'2026-05-05 09:00:00'},{no:111142,imei:'864114072893849',model:'ZLB005D1507000_00',dealer:'文襄科技',type:'硬件故障',reason:'充电模块烧毁',time:'2026-05-01 22:10:00'}];
+var tm={硬件故障:'tag-danger',通信中断:'tag-warning',人为失效:'tag-info',长期离线:'tag-purple'};
+document.getElementById('failedTableBody').innerHTML=data.map(function(d,i){return '<tr><td><input type="checkbox"></td><td>'+(i+1)+'</td><td><span class="cell-link">'+d.no+'</span></td><td>'+d.imei+'</td><td>'+d.model+'</td><td>'+d.dealer+'</td><td><span class="tag '+tm[d.type]+'">'+d.type+'</span></td><td>'+d.reason+'</td><td>'+d.time+'</td><td><button class="btn btn-sm btn-success" onclick="confirmAction(\'恢复设备\',\'确认恢复设备 '+d.imei+' ？恢复后设备将重新纳入管理。\',\'info\',function(){toast(\'设备已恢复\',\'success\')})">恢复</button><button class="btn btn-sm btn-primary" onclick="showFailedDetailModal(\''+d.imei+'\',\''+d.type+'\',\''+d.reason+'\',\''+d.time+'\')">详情</button></td></tr>'}).join('');
+})();
+// ========== Device Params Info ==========
+(function(){
+var params=[{label:'设备号',val:'111273'},{label:'设备IMEI号',val:'779F089B2A31D96'},{label:'电池类型',val:'磷酸铁锂'},{label:'电池串数',val:'-',dash:true},{label:'总电压(V)',val:'-',dash:true},{label:'电流(A)',val:'-',dash:true},{label:'SOC(%)',val:'-',dash:true},{label:'当天里程(米)',val:'-',dash:true},{label:'SOH(%)',val:'-',dash:true},{label:'电池循环次数',val:'-',dash:true},{label:'MOS温度(℃)',val:'-',dash:true},{label:'加热温度(℃)',val:'-',dash:true},{label:'电池温度(℃)',val:'-',dash:true},{label:'保护状态',val:'-',dash:true},{label:'系统故障',val:'-',dash:true},{label:'设备激活时间',val:'-',dash:true},{label:'数据更新时间',val:'-',dash:true},{label:'软件版本号',val:'-',dash:true},{label:'系统版本号',val:'-',dash:true},{label:'硬件版本号',val:'-',dash:true}];
+document.getElementById('paramsInfoGrid').innerHTML=params.map(function(p){return '<div class="detail-item"><label>'+p.label+'</label><div class="val '+(p.dash?'dash':'')+'">'+p.val+'</div></div>'}).join('');
+var switches=['充电开关','放电开关','加热开关','预充开关','限流开关','均衡开关','蓝牙开关','并充开关','并放开关','LED开关','充电机开关'];
+document.getElementById('switchGrid').innerHTML=switches.map(function(s){return '<div class="switch-item"><span class="label">'+s+'</span><span class="status off">关闭</span></div>'}).join('');
+})();
+// ========== Location Device Info ==========
+(function(){
+var info=[{k:'设备号',v:'111224'},{k:'设备IMEI号',v:'ZLZK3601115030355735'},{k:'设备IMSI号',v:'999010000000000'},{k:'所属经销商',v:'是'},{k:'设备类型',v:'ZLB005D1507000_00'},{k:'产品类型',v:'1'},{k:'是否已激活',v:'是'},{k:'是否被绑定',v:'是'},{k:'是否允许登录',v:'是'},{k:'硬件版本号',v:'AB3000X_H15S64Ah'},{k:'系统版本号',v:'F0-AB3000X-VR2025'},{k:'软件版本号',v:'ZLB005D-V2.3.1'},{k:'协议版本号',v:'-'},{k:'创建时间',v:'2026-06-09 09:36:54'},{k:'更新时间',v:'2026-06-15 17:14:52'},{k:'激活时间',v:'2026-06-09 09:36:54'}];
+document.getElementById('locDeviceInfo').innerHTML=info.map(function(i){return '<div class="kv"><span class="k">'+i.k+'</span><span class="v">'+i.v+'</span></div>'}).join('');
+})();
+// ========== Dealer Table ==========
+(function(){
+var data=[{code:'DL001',name:'兆联智控',contact:'张磊',phone:'138****8888',total:8500,online:2800,status:'启用',time:'2025-01-15 10:00:00'},{code:'DL002',name:'文襄科技',contact:'李明',phone:'139****6677',total:1500,online:520,status:'启用',time:'2025-03-20 14:30:00'},{code:'DL003',name:'智源动力',contact:'王洋',phone:'137****5544',total:800,online:210,status:'启用',time:'2025-06-08 09:15:00'},{code:'DL004',name:'华泰新能源',contact:'赵刚',phone:'136****1234',total:391,online:86,status:'启用',time:'2025-09-12 16:00:00'},{code:'DL005',name:'力合科技',contact:'陈浩',phone:'135****5678',total:0,online:0,status:'停用',time:'2026-01-03 11:00:00'}];
+document.getElementById('dealerTableBody').innerHTML=data.map(function(d,i){return '<tr><td>'+(i+1)+'</td><td>'+d.code+'</td><td>'+d.name+'</td><td>'+d.contact+'</td><td>'+d.phone+'</td><td>'+d.total+'</td><td>'+d.online+'</td><td><span class="tag '+(d.status==='启用'?'tag-success':'tag-info')+'">'+d.status+'</span></td><td>'+d.time+'</td><td><button class="btn btn-sm btn-primary" onclick="showDealerModal(\'edit\',\''+d.code+'\')">编辑</button><button class="btn btn-sm btn-default" onclick="showDealerDetailModal(\''+d.code+'\')">详情</button><button class="btn btn-sm btn-danger" onclick="confirmAction(\'删除经销商\',\'确认删除经销商「'+d.name+'」？该操作将同时解绑其名下所有设备。\',\'danger\',function(){toast(\'经销商已删除\',\'success\')})">删除</button></td></tr>'}).join('');
+})();
+// ========== Dealer Account Table ==========
+(function(){
+var data=[{name:'zhang_lei',dealer:'兆联智控',role:'经销商管理员',phone:'138****8888',email:'zhangl@zlzk.com',login:'2026-09-17 08:30:00',status:'启用'},{name:'li_ming',dealer:'文襄科技',role:'经销商管理员',phone:'139****6677',email:'lim@wxkj.com',login:'2026-09-17 09:15:00',status:'启用'},{name:'wang_yang',dealer:'智源动力',role:'经销商操作员',phone:'137****5544',email:'wangy@zydl.com',login:'2026-09-16 14:20:00',status:'启用'},{name:'zhao_gang',dealer:'华泰新能源',role:'经销商操作员',phone:'136****1234',email:'zhaog@htny.com',login:'2026-09-15 10:00:00',status:'启用'},{name:'chen_hao',dealer:'力合科技',role:'经销商管理员',phone:'135****5678',email:'chenh@lhkj.com',login:'2026-06-20 16:30:00',status:'锁定'}];
+var tm={启用:'tag-success',停用:'tag-info',锁定:'tag-danger'};
+document.getElementById('dealerAccountTableBody').innerHTML=data.map(function(d,i){return '<tr><td>'+(i+1)+'</td><td>'+d.name+'</td><td>'+d.dealer+'</td><td><span class="tag tag-primary">'+d.role+'</span></td><td>'+d.phone+'</td><td>'+d.email+'</td><td>'+d.login+'</td><td><span class="tag '+tm[d.status]+'">'+d.status+'</span></td><td><button class="btn btn-sm btn-warning" onclick="showDealerAccountModal(\'edit\',\''+d.name+'\')">编辑</button><button class="btn btn-sm btn-default" onclick="confirmAction(\'重置密码\',\'确认重置账户 '+d.name+' 的密码？重置后密码将发送至注册邮箱。\',\'info\',function(){toast(\'密码已重置并发送至邮箱\',\'success\')})">重置密码</button><button class="btn btn-sm btn-danger" onclick="confirmAction(\'删除账户\',\'确认删除账户 '+d.name+' ？\',\'danger\',function(){toast(\'账户已删除\',\'success\')})">删除</button></td></tr>'}).join('');
+})();
+
+// ========== Staff Table ==========
+(function(){
+var data=[{user:'admin',name:'系统管理员',role:'平台管理员',dealer:'-',phone:'138****8888',status:'启用'},{user:'zhang_l',name:'张磊',role:'经销商管理员',dealer:'兆联智控',phone:'139****6677',status:'启用'},{user:'wang_y',name:'王洋',role:'经销商操作员',dealer:'文襄科技',phone:'137****5544',status:'启用'},{user:'test_01',name:'测试用户01',role:'普通测试员',dealer:'-',phone:'135****1234',status:'停用'}];
+var tm={启用:'tag-success',停用:'tag-danger'};
+var rm={平台管理员:'tag-primary',经销商管理员:'tag-primary',经销商操作员:'tag-info',普通测试员:'tag-purple'};
+document.getElementById('staffTableBody').innerHTML=data.map(function(d,i){return '<tr><td>'+(i+1)+'</td><td>'+d.user+'</td><td>'+d.name+'</td><td><span class="tag '+(rm[d.role]||'tag-info')+'">'+d.role+'</span></td><td>'+d.dealer+'</td><td>'+d.phone+'</td><td><span class="tag '+tm[d.status]+'">'+d.status+'</span></td><td><button class="btn btn-sm btn-warning" onclick="showStaffModal(\'edit\',\''+d.user+'\')">编辑</button><button class="btn btn-sm btn-danger" onclick="confirmAction(\'移除员工\',\'确认将员工 '+d.name+' 从当前角色中移除？\',\'warning\',function(){toast(\'员工已移除\',\'success\')})">移除</button></td></tr>'}).join('');
+})();
+// ========== Firmware Table ==========
+(function(){
+var data=[{name:'ZLB005D_V2.3.1',ver:'V2.3.1',type:'ZLB005D1507000_00',size:'2.45',time:'2026-09-10 14:30:00',status:'已发布'},{name:'AB3000X_V1.8.0',ver:'V1.8.0',type:'AB3000X_H15S64Ah',size:'3.12',time:'2026-08-25 10:15:00',status:'已发布'},{name:'ZLB005D_V2.2.5',ver:'V2.2.5',type:'ZLB005D1507000_00',size:'2.38',time:'2026-07-20 09:00:00',status:'已停用'}];
+document.getElementById('firmwareTableBody').innerHTML=data.map(function(d,i){return '<tr><td>'+(i+1)+'</td><td>'+d.name+'</td><td>'+d.ver+'</td><td>'+d.type+'</td><td>'+d.size+'</td><td>'+d.time+'</td><td><span class="tag '+(d.status==='已发布'?'tag-success':'tag-info')+'">'+d.status+'</span></td><td><button class="btn btn-sm btn-primary" onclick="showFirmwareDetailModal(\''+d.name+'\',\''+d.ver+'\')">查看</button><button class="btn btn-sm btn-warning" onclick="showFirmwareModal(\'edit\',\''+d.name+'\')">修改</button><button class="btn btn-sm btn-danger" onclick="confirmAction(\'删除固件\',\'确认删除固件 '+d.name+' ？关联的升级任务将受到影响。\',\'danger\',function(){toast(\'固件已删除\',\'success\')})">删除</button></td></tr>'}).join('');
+})();
+// ========== OTA Task Table ==========
+(function(){
+var data=[{name:'家庭储能BMS批量升级',ver:'V2.3.1',total:500,done:487,fail:13,progress:97.4,status:'执行中',time:'2026-09-12 08:00'},{name:'AB3000X系列升级',ver:'V1.8.0',total:200,done:200,fail:0,progress:100,status:'已完成',time:'2026-08-26 10:00'},{name:'铅改锂BMS补丁升级',ver:'V2.3.1',total:50,done:0,fail:0,progress:0,status:'待执行',time:'2026-09-15 14:00'}];
+var tm={执行中:'tag-warning',已完成:'tag-success',待执行:'tag-info',已取消:'tag-info'};
+document.getElementById('otaTaskTableBody').innerHTML=data.map(function(d,i){return '<tr><td>'+(i+1)+'</td><td>'+d.name+'</td><td>'+d.ver+'</td><td>'+d.total+'</td><td>'+d.done+'</td><td>'+d.fail+'</td><td><div class="progress-bar"><div class="fill" style="width:'+d.progress+'%">'+d.progress+'%</div></div></td><td><span class="tag '+tm[d.status]+'">'+d.status+'</span></td><td>'+d.time+'</td><td>'+(d.status==='执行中'?'<button class="btn btn-sm btn-primary" onclick="showOtaTaskDetailModal(\''+d.name+'\')">查看</button><button class="btn btn-sm btn-danger" onclick="confirmAction(\'关闭任务\',\'确认关闭升级任务「'+d.name+'」？未升级的设备将停止升级。\',\'warning\',function(){toast(\'任务已关闭\',\'success\')})">关闭</button>':d.status==='待执行'?'<button class="btn btn-sm btn-success" onclick="confirmAction(\'启动任务\',\'确认启动升级任务「'+d.name+'」？\',\'info\',function(){toast(\'任务已启动\',\'success\')})">启动</button><button class="btn btn-sm btn-primary" onclick="showOtaTaskModal(\'edit\',\''+d.name+'\')">修改</button><button class="btn btn-sm btn-danger" onclick="confirmAction(\'删除任务\',\'确认删除升级任务「'+d.name+'」？\',\'danger\',function(){toast(\'任务已删除\',\'success\')})">删除</button>':'<button class="btn btn-sm btn-primary" onclick="showOtaTaskDetailModal(\''+d.name+'\')">查看</button><button class="btn btn-sm btn-default" onclick="confirmAction(\'删除任务\',\'确认删除升级任务「'+d.name+'」？\',\'danger\',function(){toast(\'任务已删除\',\'success\')})">删除</button>')+'</td></tr>'}).join('');
+})();
+// ========== OTA Strategy Table ==========
+(function(){
+var data=[{name:'夜间静默升级',mode:'自动分组',period:'02:00-06:00',concurrent:50,timeout:30,status:'启用'},{name:'即时全量升级',mode:'全量推送',period:'00:00-24:00',concurrent:100,timeout:60,status:'停用'}];
+document.getElementById('otaStrategyTableBody').innerHTML=data.map(function(d,i){return '<tr><td>'+(i+1)+'</td><td>'+d.name+'</td><td>'+d.mode+'</td><td>'+d.period+'</td><td>'+d.concurrent+'</td><td>'+d.timeout+'</td><td><span class="tag '+(d.status==='启用'?'tag-success':'tag-info')+'">'+d.status+'</span></td><td><button class="btn btn-sm btn-warning" onclick="showOtaStrategyModal(\'edit\',\''+d.name+'\')">修改</button><button class="btn btn-sm btn-danger" onclick="confirmAction(\'删除策略\',\'确认删除升级策略「'+d.name+'」？\',\'danger\',function(){toast(\'策略已删除\',\'success\')})">删除</button></td></tr>'}).join('');
+})();
+// ========== System Log Table ==========
+(function(){
+var levels=['INFO','WARN','ERROR','INFO','ERROR','INFO','WARN','INFO','ERROR','INFO'];
+var modules=['设备通信','MQTT服务','数据解析','定时任务','用户认证','设备通信','MQTT服务','定时任务','数据解析','设备通信'];
+var msgs=['设备864114070050327心跳超时，标记离线','MQTT连接池达到阈值(80%)','设备0009888E00CB2CC数据解析异常: 字段缺失','执行离线设备清理任务，清理32台','用户admin登录成功，IP:113.87.37.53','设备867584030010156上报异常数据: 电压=0','MQTT Broker重连成功','执行设备健康度统计定时任务','设备779F089B2A31D96协议版本不兼容','设备868108080100020恢复在线'];
+var imeis=['864114070050327','','0009888E00CB2CC','','','867584030010156','','','779F089B2A31D96','868108080100020'];
+document.getElementById('sysLogTableBody').innerHTML=levels.map(function(lv,i){return '<tr><td>'+(i+1)+'</td><td><span class="tag '+(lv==='ERROR'?'tag-danger':lv==='WARN'?'tag-warning':'tag-success')+'">'+lv+'</span></td><td>'+modules[i]+'</td><td>'+msgs[i%msgs.length]+'</td><td>'+(imeis[i%imeis.length]||'-')+'</td><td>2026-09-18 '+String(16-i).padStart(2,'0')+':'+String(30-i*3).padStart(2,'0')+':'+String(15+i).padStart(2,'0')+'</td><td><button class="btn btn-sm btn-primary" onclick="showSysLogDetailModal(\''+lv+'\',\''+modules[i]+'\',\''+msgs[i%msgs.length].replace(/'/g,'')+'\')">详情</button></td></tr>'}).join('');
+})();
+// ========== Op Log Table ==========
+(function(){
+var data=[{user:'管理员',role:'1',module:'BMS-设备管理',content:'请求设备即时上报状态',path:'/bms/deviceAction/syncDev',ip:'113.87.37.53',area:'中国/广东省/深圳市/电信',ua:'Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0',result:'失败',time:'2026-09-12 15:26:07'},{user:'管理员',role:'1',module:'BMS-设备管理',content:'分配设备',path:'/bms/deviceInfo/allocate',ip:'113.87.37.53',area:'中国/广东省/深圳市/电信',ua:'Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0',result:'成功',time:'2026-09-12 15:20:43'},{user:'管理员',role:'1',module:'BMS-设备管理',content:'注册设备',path:'/bms/deviceInfo/register',ip:'113.87.37.53',area:'中国/广东省/深圳市/电信',ua:'Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0',result:'成功',time:'2026-09-12 15:20:33'},{user:'管理员',role:'1',module:'BMS-设备管理',content:'请求设备即时上报状态',path:'/bms/deviceAction/syncDev',ip:'113.87.37.53',area:'中国/广东省/深圳市/电信',ua:'Chrome/152.0.0.0 Safari/537.36',result:'失败',time:'2026-09-12 11:42:29'}];
+document.getElementById('opLogTableBody').innerHTML=data.map(function(d,i){return '<tr><td>'+d.user+'</td><td>'+d.role+'</td><td>'+d.module+'</td><td>'+d.content+'</td><td>'+d.path+'</td><td>'+d.ip+'</td><td>'+d.area+'</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">'+d.ua+'</td><td><span class="tag '+(d.result==='成功'?'tag-success':'tag-danger')+'">'+d.result+'</span></td><td>'+d.time+'</td><td><button class="btn btn-sm btn-primary" onclick="showOpLogDetailModal('+i+')">详情</button></td></tr>'}).join('');
+window._opLogData=data;
+})();
+// ========== Login Lock Table ==========
+(function(){
+var data=[{user:'test_01',ip:'192.168.1.105',fail:5,lockTime:'2026-09-18 15:30:00',unlockTime:'2026-09-18 15:45:00',status:'已锁定'},{user:'unknown1',ip:'113.92.50.123',fail:8,lockTime:'2026-09-18 14:20:00',unlockTime:'2026-09-18 14:50:00',status:'已锁定'},{user:'test_02',ip:'192.168.1.108',fail:3,lockTime:'2026-09-18 10:15:00',unlockTime:'2026-09-18 10:30:00',status:'已解锁'},{user:'guest01',ip:'114.114.114.114',fail:5,lockTime:'2026-09-17 22:00:00',unlockTime:'2026-09-17 22:15:00',status:'已解锁'}];
+document.getElementById('loginLockTableBody').innerHTML=data.map(function(d,i){return '<tr><td>'+(i+1)+'</td><td>'+d.user+'</td><td>'+d.ip+'</td><td>'+d.fail+'</td><td>'+d.lockTime+'</td><td>'+d.unlockTime+'</td><td><span class="tag '+(d.status==='已锁定'?'tag-danger':'tag-success')+'">'+d.status+'</span></td><td>'+(d.status==='已锁定'?'<button class="btn btn-sm btn-primary" onclick="confirmAction(\'手动解锁\',\'确认手动解锁用户 '+d.user+' ('+d.ip+') ？\',\'info\',function(){toast(\'用户已解锁\',\'success\')})">手动解锁</button>':'<button class="btn btn-sm btn-default" onclick="toast(\'该用户已解锁，无需操作\',\'info\')">查看</button>')+'</td></tr>'}).join('');
+})();
+</script>\n<script>
+// ========== All Modal Functions ==========
+function showImportDeviceModal(){
+showModal({title:'导入设备',size:'lg',body:'<div class="modal-form"><div class="form-group"><label>上传文件 <span class="req">*</span></label><input type="file" class="input" accept=".xlsx,.xls,.csv" style="padding:4px"><div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">支持 .xlsx、.xls、.csv 格式，单次最多导入5000条</div></div><div class="form-group"><label>分配经销商</label><select class="select"><option value="">不分配（仅导入）</option><option>兆联智控</option><option>文襄科技</option></select></div><div class="form-group"><label>导入说明</label><div style="font-size:12px;color:var(--text-secondary);line-height:1.8;padding:8px;background:#F5F7FA;border-radius:4px;">1. 下载模板：<a href="#" style="color:var(--primary-light)">设备导入模板.xlsx</a><br>2. 按模板填写设备信息（设备号、IMEI号、设备型号、产品类型）<br>3. 上传文件后系统自动校验并导入<br>4. 导入完成后显示导入结果（成功/失败/重复）</div></div></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">取消</button><button class="btn btn-primary" onclick="hideModal();toast(\'设备导入中...\',\'info\');setTimeout(()=>toast(\'导入完成：成功 0 条，失败 0 条\',\'success\'),2000)">确认导入</button>'})}
+function showAssignModal(imei){
+showModal({title:'设备分配',size:'sm',body:'<div class="modal-form"><div class="form-group"><label>设备IMEI号</label><input class="input" value="'+imei+'" readonly></div><div class="form-group"><label>分配经销商 <span class="req">*</span></label><select class="select"><option value="">请选择经销商</option><option>兆联智控</option><option>文襄科技</option><option>智源动力</option><option>华泰新能源</option></select></div><div class="form-group"><label>备注</label><input class="input" placeholder="选填"></div></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">取消</button><button class="btn btn-primary" onclick="hideModal();toast(\'设备分配成功\',\'success\')">确认分配</button>'})}
+function showDeviceConfigModal(){
+showModal({title:'设备参数设置',size:'lg',body:'<div class="modal-form"><div class="form-row"><div class="form-group"><label>设备号</label><input class="input" value="111273" readonly></div><div class="form-group"><label>设备IMEI号</label><input class="input" value="779F089B2A31D96" readonly></div></div><div class="form-row"><div class="form-group"><label>单体过压阈值(mV)</label><input class="input" type="number" value="3650"></div><div class="form-group"><label>单体低压阈值(mV)</label><input class="input" type="number" value="2500"></div><div class="form-group"><label>电池高温告警(℃)</label><input class="input" type="number" value="55"></div><div class="form-group"><label>电池低温告警(℃)</label><input class="input" type="number" value="-20"></div></div><div class="form-row"><div class="form-group"><label>SOC低电告警(%)</label><input class="input" type="number" value="20"></div><div class="form-group"><label>SOC极低保护(%)</label><input class="input" type="number" value="10"></div><div class="form-group"><label>数据上报间隔(秒)</label><input class="input" type="number" value="30"></div><div class="form-group"><label>心跳间隔(秒)</label><input class="input" type="number" value="60"></div></div></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">取消</button><button class="btn btn-primary" onclick="hideModal();toast(\'参数配置已下发至设备\',\'success\')">保存并下发</button>'})}
+function showHistoryModal(){
+showModal({title:'设备历史记录',size:'lg',body:'<div class="hist-tabs"><div class="hist-tab active" onclick="switchHistTab(this,\'alarm\')">告警/保护历史</div><div class="hist-tab" onclick="switchHistTab(this,\'fault\')">故障历史</div><div class="hist-tab" onclick="switchHistTab(this,\'status\')">设备状态历史</div></div><div class="hist-content" id="histContent"></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">关闭</button><button class="btn btn-primary" onclick="toast(\'历史记录已导出\',\'success\')">导出记录</button>',onShow:function(){switchHistTab(null,'alarm')}})}
+function switchHistTab(el,tab){if(el){document.querySelectorAll('.hist-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active')}var c=document.getElementById('histContent');if(!c)return;var data={alarm:[['2026-05-21 14:17:18','充电机高温故障','故障','68.5℃'],['2026-05-21 14:17:18','限流故障','故障','10.5A'],['2026-05-15 08:30:00','SOC低电告警','警告','18.5%'],['2026-05-10 12:00:00','单体低压告警','警告','2480mV']],fault:[['2026-05-21 14:17:18','充电机高温故障','已恢复','2026-05-21 14:25:00'],['2026-05-21 14:17:18','限流故障','已恢复','2026-05-21 14:20:18'],['2026-02-04 13:20:27','热敏电阻故障','未恢复','-'],['2026-02-03 21:46:04','CAN发送故障','已恢复','2026-02-03 21:48:00']],status:[['2026-09-18 08:30:00','在线','心跳正常','SOC:85.5%'],['2026-09-18 07:30:00','在线','心跳正常','SOC:84.2%'],['2026-09-18 06:30:00','在线','心跳正常','SOC:83.1%'],['2026-09-17 22:00:00','离线','心跳超时','-'],['2026-09-17 06:00:00','休眠','低功耗模式','-']]};var rows=data[tab]||[];var headers={alarm:['时间','告警类型','级别','触发值'],fault:['时间','故障类型','状态','恢复时间'],status:['时间','设备状态','说明','附加信息']};var h=headers[tab];c.innerHTML='<table><thead><tr>'+h.map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>'+rows.map(function(r){return '<tr>'+r.map(function(cell,i){var cls='';if(tab==='alarm'&&i===2)cls=cell==='故障'?'tag-danger':'tag-warning';if(tab==='fault'&&i===2)cls=cell==='已恢复'?'tag-success':'tag-danger';if(tab==='status'&&i===1)cls=cell==='在线'?'tag-success':cell==='离线'?'tag-warning':'tag-info';return '<td>'+(cls?'<span class="tag '+cls+'">'+cell+'</span>':cell)+'</td>'}).join('')+'</tr>'}).join('')+'</tbody></table>'}
+function showAlarmHistoryModal(){
+showModal({title:'每日告警统计详情',size:'lg',body:'<div class="hist-content"><table><thead><tr><th>日期</th><th>告警总数</th><th>严重</th><th>故障</th><th>警告</th><th>已恢复</th></tr></thead><tbody><tr><td>2026-09-07</td><td>650</td><td><span class="tag tag-danger">12</span></td><td><span class="tag tag-warning">85</span></td><td><span class="tag tag-info">553</span></td><td><span class="tag tag-success">580</span></td></tr><tr><td>2026-09-06</td><td>500</td><td><span class="tag tag-danger">8</span></td><td><span class="tag tag-warning">62</span></td><td><span class="tag tag-info">430</span></td><td><span class="tag tag-success">451</span></td></tr><tr><td>2026-09-05</td><td>120</td><td><span class="tag tag-danger">3</span></td><td><span class="tag tag-warning">15</span></td><td><span class="tag tag-info">102</span></td><td><span class="tag tag-success">118</span></td></tr><tr><td>2026-09-04</td><td>80</td><td><span class="tag tag-danger">1</span></td><td><span class="tag tag-warning">10</span></td><td><span class="tag tag-info">69</span></td><td><span class="tag tag-success">78</span></td></tr><tr><td>2026-09-03</td><td>90</td><td><span class="tag tag-danger">0</span></td><td><span class="tag tag-warning">8</span></td><td><span class="tag tag-info">82</span></td><td><span class="tag tag-success">88</span></td></tr></tbody></table></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">关闭</button><button class="btn btn-primary" onclick="toast(\'告警统计已导出\',\'success\')">导出</button>'})}
+function showAlarmDetailModal(idx){
+var bars=[50,80,120,90,200,350,180,250,650,150,120,80,500,100,90,60,50,40,30];
+var dates=['08-30','08-31','09-01','09-02','09-03','09-04','09-05','09-06','09-07','09-08','09-09','09-10','09-11','09-12','09-13','09-14','09-15','09-16','09-17'];
+showModal({title:'告警详情 - 2026-'+dates[idx],size:'sm',body:'<div class="modal-detail"><div class="detail-row"><div class="dk">日期</div><div class="dv">2026-'+dates[idx]+'</div></div><div class="detail-row"><div class="dk">告警总数</div><div class="dv">'+bars[idx]+' 次</div></div><div class="detail-row"><div class="dk">严重告警</div><div class="dv">'+Math.floor(bars[idx]*0.02)+' 次</div></div><div class="detail-row"><div class="dk">故障告警</div><div class="dv">'+Math.floor(bars[idx]*0.12)+' 次</div></div><div class="detail-row"><div class="dk">警告告警</div><div class="dv">'+Math.floor(bars[idx]*0.86)+' 次</div></div><div class="detail-row"><div class="dk">已恢复</div><div class="dv">'+Math.floor(bars[idx]*0.92)+' 次</div></div></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">关闭</button><button class="btn btn-primary" onclick="hideModal();switchPage(\'sys-log\')">查看日志</button>'})}
+function showFaultHistoryModal(){
+showModal({title:'最近故障记录详情',size:'lg',body:'<div class="hist-content"><table><thead><tr><th>设备IMEI号</th><th>故障类型</th><th>级别</th><th>故障时间</th><th>状态</th><th>操作</th></tr></thead><tbody><tr><td>867584030010156</td><td>充电机高温故障</td><td><span class="tag tag-danger">故障</span></td><td>2026-05-21 14:17:18</td><td><span class="tag tag-danger">未恢复</span></td><td><button class="btn btn-sm btn-primary" onclick="switchPage(\'device-params\')">查看设备</button></td></tr><tr><td>867584030010155</td><td>限流故障</td><td><span class="tag tag-danger">故障</span></td><td>2026-05-21 14:17:18</td><td><span class="tag tag-success">已恢复</span></td><td><button class="btn btn-sm btn-primary" onclick="switchPage(\'device-params\')">查看设备</button></td></tr><tr><td>868108070183563</td><td>热敏电阻故障</td><td><span class="tag tag-danger">故障</span></td><td>2026-02-04 13:20:27</td><td><span class="tag tag-danger">未恢复</span></td><td><button class="btn btn-sm btn-primary" onclick="switchPage(\'device-params\')">查看设备</button></td></tr><tr><td>864114070055300</td><td>CAN发送故障</td><td><span class="tag tag-warning">警告</span></td><td>2026-02-03 21:46:04</td><td><span class="tag tag-success">已恢复</span></td><td><button class="btn btn-sm btn-primary" onclick="switchPage(\'device-params\')">查看设备</button></td></tr></tbody></table></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">关闭</button><button class="btn btn-primary" onclick="toast(\'故障记录已导出\',\'success\')">导出</button>'})}
+function showFaultDetailModal(imei,type){
+showModal({title:'故障详情',size:'sm',body:'<div class="modal-detail"><div class="detail-row"><div class="dk">设备IMEI号</div><div class="dv">'+imei+'</div></div><div class="detail-row"><div class="dk">故障类型</div><div class="dv"><span class="tag tag-danger">'+type+'</span></div></div><div class="detail-row"><div class="dk">故障级别</div><div class="dv">故障</div></div><div class="detail-row"><div class="dk">触发时间</div><div class="dv">2026-05-21 14:17:18</div></div><div class="detail-row"><div class="dk">触发值</div><div class="dv">充电机温度 68.5℃（阈值 65℃）</div></div><div class="detail-row"><div class="dk">恢复状态</div><div class="dv"><span class="tag tag-danger">未恢复</span></div></div></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">关闭</button><button class="btn btn-primary" onclick="hideModal();switchPage(\'device-params\')">查看设备</button>'})}
+function showFailedDetailModal(imei,type,reason,time){
+showModal({title:'失效设备详情',size:'sm',body:'<div class="modal-detail"><div class="detail-row"><div class="dk">设备IMEI号</div><div class="dv">'+imei+'</div></div><div class="detail-row"><div class="dk">失效类型</div><div class="dv">'+type+'</div></div><div class="detail-row"><div class="dk">失效原因</div><div class="dv">'+reason+'</div></div><div class="detail-row"><div class="dk">失效时间</div><div class="dv">'+time+'</div></div><div class="detail-row"><div class="dk">操作人</div><div class="dv">管理员</div></div><div class="detail-row"><div class="dk">处理状态</div><div class="dv"><span class="tag tag-danger">已失效</span></div></div></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">关闭</button><button class="btn btn-success" onclick="hideModal();confirmAction(\'恢复设备\',\'确认恢复设备 '+imei+' ？\',\'info\',function(){toast(\'设备已恢复\',\'success\')})">恢复设备</button>'})}
+function showDealerModal(mode,code){
+var isEdit=mode==='edit';var title=isEdit?'编辑经销商':'新增经销商';
+showModal({title:title,size:'lg',body:'<div class="modal-form"><div class="form-row"><div class="form-group"><label>经销商名称 <span class="req">*</span></label><input class="input" value="'+(isEdit?'兆联智控':'')+'" placeholder="请输入经销商名称"></div><div class="form-group"><label>经销商编码 <span class="req">*</span></label><input class="input" value="'+(isEdit?code||'DL001':'')+'" placeholder="系统自动生成或手动输入"></div></div><div class="form-row"><div class="form-group"><label>联系人 <span class="req">*</span></label><input class="input" value="'+(isEdit?'张磊':'')+'" placeholder="请输入联系人姓名"></div><div class="form-group"><label>联系电话 <span class="req">*</span></label><input class="input" value="'+(isEdit?'13888888888':'')+'" placeholder="请输入联系电话"></div></div><div class="form-row"><div class="form-group"><label>邮箱</label><input class="input" placeholder="请输入邮箱"></div><div class="form-group"><label>地址</label><input class="input" placeholder="请输入地址"></div></div><div class="form-group"><label>备注</label><input class="input" placeholder="选填"></div></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">取消</button><button class="btn btn-primary" onclick="hideModal();toast('+(isEdit?'\'经销商信息已更新\'':'\'经销商已创建\'')+',\'success\')">'+(isEdit?'保存':'确认创建')+'</button>'})}
+function showDealerDetailModal(code){
+showModal({title:'经销商详情 - '+code,size:'lg',body:'<div class="modal-detail"><div class="detail-row"><div class="dk">经销商编码</div><div class="dv">DL001</div></div><div class="detail-row"><div class="dk">经销商名称</div><div class="dv">兆联智控</div></div><div class="detail-row"><div class="dk">联系人</div><div class="dv">张磊</div></div><div class="detail-row"><div class="dk">联系电话</div><div class="dv">138****8888</div></div><div class="detail-row"><div class="dk">设备总数</div><div class="dv">8,500</div></div><div class="detail-row"><div class="dk">在线设备</div><div class="dv"><span class="tag tag-success">2,800</span></div></div><div class="detail-row"><div class="dk">离线设备</div><div class="dv"><span class="tag tag-warning">5,700</span></div></div><div class="detail-row"><div class="dk">创建时间</div><div class="dv">2025-01-15 10:00:00</div></div><div class="detail-row"><div class="dk">状态</div><div class="dv"><span class="tag tag-success">启用</span></div></div></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">关闭</button><button class="btn btn-primary" onclick="hideModal();switchPage(\'dealer-account\')">查看账户</button>'})}
+function showDealerAccountModal(mode,name){
+var isEdit=mode==='edit';var title=isEdit?'编辑账户':'新增账户';
+showModal({title:title,size:'lg',body:'<div class="modal-form"><div class="form-row"><div class="form-group"><label>账户名 <span class="req">*</span></label><input class="input" value="'+(isEdit?name||'':'')+'" placeholder="请输入账户名"></div><div class="form-group"><label>所属经销商 <span class="req">*</span></label><select class="select"><option value="">请选择经销商</option><option>兆联智控</option><option>文襄科技</option><option>智源动力</option></select></div></div><div class="form-row"><div class="form-group"><label>角色 <span class="req">*</span></label><select class="select"><option value="">请选择角色</option><option>经销商管理员</option><option>经销商操作员</option></select></div><div class="form-group"><label>手机号 <span class="req">*</span></label><input class="input" placeholder="请输入手机号"></div></div><div class="form-row"><div class="form-group"><label>邮箱</label><input class="input" placeholder="请输入邮箱"></div><div class="form-group"><label>初始密码</label><input class="input" type="password" value="Bms@2026" placeholder="默认密码 Bms@2026"></div></div></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">取消</button><button class="btn btn-primary" onclick="hideModal();toast('+(isEdit?'\'账户信息已更新\'':'\'账户已创建\'')+',\'success\')">'+(isEdit?'保存':'确认创建')+'</button>'})}
+function showRoleModal(mode){
+showModal({title:mode==='edit'?'编辑角色':'新增角色',size:'sm',body:'<div class="modal-form"><div class="form-group"><label>角色名称 <span class="req">*</span></label><input class="input" placeholder="请输入角色名称"></div><div class="form-group"><label>角色描述</label><input class="input" placeholder="请输入角色描述"></div><div class="form-group"><label>数据权限范围</label><select class="select"><option>全部数据</option><option>本经销商数据</option><option>仅本人数据</option></select></div></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">取消</button><button class="btn btn-primary" onclick="hideModal();toast(\'角色已创建\',\'success\')">确认创建</button>'})}
+function showStaffModal(mode,user){
+var isEdit=mode==='edit';
+showModal({title:isEdit?'编辑员工':'新增员工',size:'lg',body:'<div class="modal-form"><div class="form-row"><div class="form-group"><label>用户名 <span class="req">*</span></label><input class="input" value="'+(isEdit?user||'':'')+'" placeholder="请输入用户名"></div><div class="form-group"><label>真实姓名 <span class="req">*</span></label><input class="input" placeholder="请输入真实姓名"></div></div><div class="form-row"><div class="form-group"><label>角色 <span class="req">*</span></label><select class="select"><option value="">请选择角色</option><option>平台管理员</option><option>经销商管理员</option><option>经销商操作员</option><option>普通测试员</option></select></div><div class="form-group"><label>所属经销商</label><select class="select"><option value="">无（平台用户）</option><option>兆联智控</option><option>文襄科技</option></select></div></div><div class="form-row"><div class="form-group"><label>手机号</label><input class="input" placeholder="请输入手机号"></div><div class="form-group"><label>邮箱</label><input class="input" placeholder="请输入邮箱"></div></div></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">取消</button><button class="btn btn-primary" onclick="hideModal();toast('+(isEdit?'\'员工信息已更新\'':'\'员工已创建\'')+',\'success\')">'+(isEdit?'保存':'确认创建')+'</button>'})}
+function showFirmwareModal(mode,name){
+var isEdit=mode==='edit';
+showModal({title:isEdit?'修改固件':'新增固件',size:'lg',body:'<div class="modal-form"><div class="form-row"><div class="form-group"><label>固件名称 <span class="req">*</span></label><input class="input" value="'+(isEdit?name||'':'')+'" placeholder="请输入固件名称"></div><div class="form-group"><label>固件版本 <span class="req">*</span></label><input class="input" placeholder="如 V2.3.1"></div></div><div class="form-row"><div class="form-group"><label>设备类型 <span class="req">*</span></label><select class="select"><option value="">请选择设备类型</option><option>ZLB005D1507000_00</option><option>AB3000X_H15S64Ah</option></select></div><div class="form-group"><label>固件状态</label><select class="select"><option>已发布</option><option>已停用</option></select></div></div><div class="form-group"><label>固件文件 <span class="req">*</span></label><input type="file" class="input" accept=".bin" style="padding:4px"><div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">支持 .bin 格式固件文件</div></div><div class="form-group"><label>更新说明</label><textarea class="input" style="width:100%;height:80px;resize:vertical" placeholder="请输入固件更新说明"></textarea></div></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">取消</button><button class="btn btn-primary" onclick="hideModal();toast('+(isEdit?'\'固件信息已更新\'':'\'固件已上传\'')+',\'success\')">'+(isEdit?'保存':'确认上传')+'</button>'})}
+function showFirmwareDetailModal(name,ver){
+showModal({title:'固件详情 - '+name,size:'sm',body:'<div class="modal-detail"><div class="detail-row"><div class="dk">固件名称</div><div class="dv">'+name+'</div></div><div class="detail-row"><div class="dk">固件版本</div><div class="dv">'+ver+'</div></div><div class="detail-row"><div class="dk">设备类型</div><div class="dv">ZLB005D1507000_00</div></div><div class="detail-row"><div class="dk">固件大小</div><div class="dv">2.45 MB</div></div><div class="detail-row"><div class="dk">MD5校验</div><div class="dv" style="font-size:11px">a1b2c3d4e5f67890abcdef1234567890</div></div><div class="detail-row"><div class="dk">上传时间</div><div class="dv">2026-09-10 14:30:00</div></div><div class="detail-row"><div class="dk">状态</div><div class="dv"><span class="tag tag-success">已发布</span></div></div></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">关闭</button>'})}
+function showOtaTaskModal(mode,name){
+var isEdit=mode==='edit';
+showModal({title:isEdit?'修改升级任务':'新建升级任务',size:'lg',body:'<div class="modal-form"><div class="form-row"><div class="form-group"><label>任务名称 <span class="req">*</span></label><input class="input" value="'+(isEdit?name||'':'')+'" placeholder="请输入任务名称"></div><div class="form-group"><label>选择固件 <span class="req">*</span></label><select class="select"><option value="">请选择固件</option><option>ZLB005D_V2.3.1 (V2.3.1)</option><option>AB3000X_V1.8.0 (V1.8.0)</option></select></div></div><div class="form-row"><div class="form-group"><label>升级策略</label><select class="select"><option value="">请选择策略</option><option>夜间静默升级</option><option>即时全量升级</option></select></div><div class="form-group"><label>升级方式</label><select class="select"><option>立即升级</option><option>定时升级</option></select></div></div><div class="form-row"><div class="form-group"><label>目标设备筛选</label><select class="select"><option>全部设备</option><option>指定经销商</option><option>指定设备型号</option><option>手动选择设备</option></select></div><div class="form-group"><label>执行时间</label><input class="input" type="datetime-local"></div></div></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">取消</button><button class="btn btn-primary" onclick="hideModal();toast('+(isEdit?'\'任务已更新\'':'\'任务已创建\'')+',\'success\')">'+(isEdit?'保存':'确认创建')+'</button>'})}
+function showOtaTaskDetailModal(name){
+showModal({title:'升级任务详情 - '+name,size:'lg',body:'<div class="modal-detail"><div class="detail-row"><div class="dk">任务名称</div><div class="dv">'+name+'</div></div><div class="detail-row"><div class="dk">固件版本</div><div class="dv">V2.3.1</div></div><div class="detail-row"><div class="dk">目标设备数</div><div class="dv">500</div></div><div class="detail-row"><div class="dk">已升级</div><div class="dv"><span class="tag tag-success">487</span></div></div><div class="detail-row"><div class="dk">失败数</div><div class="dv"><span class="tag tag-danger">13</span></div></div><div class="detail-row"><div class="dk">进度</div><div class="dv"><div class="progress-bar" style="width:200px"><div class="fill" style="width:97.4%">97.4%</div></div></div></div><div class="detail-row"><div class="dk">状态</div><div class="dv"><span class="tag tag-warning">执行中</span></div></div></div><div style="margin-top:16px"><div class="section-title" style="font-size:13px">设备升级明细</div><table><thead><tr><th>设备IMEI号</th><th>状态</th><th>进度</th><th>时间</th></tr></thead><tbody><tr><td>864114070050327</td><td><span class="tag tag-success">已完成</span></td><td>100%</td><td>09-12 08:15</td></tr><tr><td>0009888E00CB2CC</td><td><span class="tag tag-success">已完成</span></td><td>100%</td><td>09-12 08:22</td></tr><tr><td>0009888E00D2DE0</td><td><span class="tag tag-danger">失败</span></td><td>45%</td><td>09-12 08:30</td></tr><tr><td>0009888E00D2DDC</td><td><span class="tag tag-warning">升级中</span></td><td>78%</td><td>09-12 09:00</td></tr></tbody></table></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">关闭</button><button class="btn btn-primary" onclick="toast(\'任务详情已导出\',\'success\')">导出</button>'})}
+function showOtaStrategyModal(mode,name){
+var isEdit=mode==='edit';
+showModal({title:isEdit?'修改升级策略':'新建升级策略',size:'lg',body:'<div class="modal-form"><div class="form-row"><div class="form-group"><label>策略名称 <span class="req">*</span></label><input class="input" value="'+(isEdit?name||'':'')+'" placeholder="请输入策略名称"></div><div class="form-group"><label>升级方式 <span class="req">*</span></label><select class="select"><option>自动分组</option><option>全量推送</option></select></div></div><div class="form-row"><div class="form-group"><label>生效时段 - 开始</label><input class="input" type="time" value="02:00"></div><div class="form-group"><label>生效时段 - 结束</label><input class="input" type="time" value="06:00"></div></div><div class="form-row"><div class="form-group"><label>最大并发数</label><input class="input" type="number" value="50"></div><div class="form-group"><label>超时时间(分钟)</label><input class="input" type="number" value="30"></div></div></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">取消</button><button class="btn btn-primary" onclick="hideModal();toast('+(isEdit?'\'策略已更新\'':'\'策略已创建\'')+',\'success\')">'+(isEdit?'保存':'确认创建')+'</button>'})}
+function showOpLogDetailModal(idx){
+var d=window._opLogData[idx];if(!d)return;
+showModal({title:'操作日志详情',size:'lg',body:'<div class="modal-detail"><div class="detail-row"><div class="dk">用户名</div><div class="dv">'+d.user+'</div></div><div class="detail-row"><div class="dk">角色</div><div class="dv">'+d.role+'</div></div><div class="detail-row"><div class="dk">操作模块</div><div class="dv">'+d.module+'</div></div><div class="detail-row"><div class="dk">操作内容</div><div class="dv">'+d.content+'</div></div><div class="detail-row"><div class="dk">权限路径</div><div class="dv" style="font-size:11px">'+d.path+'</div></div><div class="detail-row"><div class="dk">操作IP</div><div class="dv">'+d.ip+'</div></div><div class="detail-row"><div class="dk">IP区域</div><div class="dv">'+d.area+'</div></div><div class="detail-row"><div class="dk">客户端信息</div><div class="dv" style="font-size:11px;word-break:break-all">'+d.ua+'</div></div><div class="detail-row"><div class="dk">请求结果</div><div class="dv"><span class="tag '+(d.result==='成功'?'tag-success':'tag-danger')+'">'+d.result+'</span></div></div><div class="detail-row"><div class="dk">操作时间</div><div class="dv">'+d.time+'</div></div></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">关闭</button>'})}
+function showSysLogDetailModal(lv,mod,msg){
+showModal({title:'系统日志详情',size:'sm',body:'<div class="modal-detail"><div class="detail-row"><div class="dk">日志级别</div><div class="dv"><span class="tag '+(lv==='ERROR'?'tag-danger':lv==='WARN'?'tag-warning':'tag-success')+'">'+lv+'</span></div></div><div class="detail-row"><div class="dk">模块</div><div class="dv">'+mod+'</div></div><div class="detail-row"><div class="dk">日志内容</div><div class="dv">'+msg+'</div></div><div class="detail-row"><div class="dk">记录时间</div><div class="dv">2026-09-18 16:30:15</div></div></div>',
+footer:'<button class="btn btn-default" onclick="hideModal()">关闭</button>'})}
+</script>
+</body>
+</html>
