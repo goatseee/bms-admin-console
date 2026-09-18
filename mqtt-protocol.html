@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BMS管理系统 - MQTT接口协议文档</title>
+<style>
+:root { --primary:#1A5276; --primary-light:#2E86C1; --bg:#F8F9FA; --card:#fff; --border:#E4E7ED; --text:#303133; --text2:#909399; --success:#67C23A; --warning:#E6A23C; --danger:#F56C6C; --code-bg:#1E1E2E; --code-text:#CDD6F4; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Microsoft YaHei','Segoe UI',sans-serif; background:var(--bg); color:var(--text); line-height:1.7; font-size:14px; }
+.container { max-width:1100px; margin:0 auto; padding:24px; }
+h1 { font-size:28px; color:var(--primary); margin-bottom:8px; }
+h2 { font-size:22px; color:var(--primary); margin:32px 0 12px; padding-bottom:8px; border-bottom:2px solid var(--primary-light); }
+h3 { font-size:17px; color:var(--primary-dark); margin:24px 0 8px; }
+h4 { font-size:15px; color:var(--text); margin:16px 0 8px; }
+p { margin-bottom:8px; }
+.subtitle { color:var(--text2); font-size:13px; margin-bottom:24px; }
+.card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+.card-title { font-weight:600; color:var(--primary); margin-bottom:8px; font-size:15px; }
+table { width:100%; border-collapse:collapse; margin:8px 0; font-size:13px; }
+th { background:#F5F7FA; padding:8px 12px; text-align:left; font-weight:600; color:var(--text2); border:1px solid var(--border); white-space:nowrap; }
+td { padding:8px 12px; border:1px solid var(--border); }
+tr:nth-child(even) td { background:#FAFBFC; }
+code { background:#F0F2F5; padding:2px 6px; border-radius:3px; font-family:Consolas,monospace; font-size:12px; color:var(--primary); }
+pre { background:var(--code-bg); color:var(--code-text); padding:16px; border-radius:8px; overflow-x:auto; font-family:Consolas,monospace; font-size:12px; line-height:1.5; margin:8px 0; }
+pre .key { color:#89B4FA; }
+pre .str { color:#A6E3A1; }
+pre .num { color:#FAB387; }
+pre .com { color:#6C7086; font-style:italic; }
+.tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:500; }
+.tag-up { background:#E8F8F0; color:var(--success); border:1px solid #B7EB8F; }
+.tag-down { background:#FDF6EC; color:var(--warning); border:1px solid #F5DAB1; }
+.tag-req { background:#ECF5FF; color:var(--primary-light); border:1px solid #B3D8FF; }
+.note { background:#ECF5FF; border-left:3px solid var(--primary-light); padding:8px 16px; margin:8px 0; border-radius:0 4px 4px 0; font-size:13px; }
+.warn { background:#FDF6EC; border-left:3px solid var(--warning); padding:8px 16px; margin:8px 0; border-radius:0 4px 4px 0; font-size:13px; }
+.toc { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px 24px; margin-bottom:24px; }
+.toc h3 { margin-top:0; }
+.toc ul { list-style:none; padding-left:16px; }
+.toc li { padding:3px 0; }
+.toc a { color:var(--primary-light); text-decoration:none; }
+.toc a:hover { text-decoration:underline; }
+.badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:11px; background:var(--primary); color:#fff; margin-left:8px; }
+.field-table td:first-child { white-space:nowrap; color:var(--primary); font-weight:500; }
+.field-table .req { color:var(--danger); }
+.field-table .opt { color:var(--text2); }
+hr { border:none; border-top:1px solid var(--border); margin:24px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>BMS管理系统 — MQTT接口协议文档 <span class="badge">V1.0</span></h1>
+<div class="subtitle">文档版本：V1.0 | 更新日期：2026-09-18 | 适用范围：BMS设备端 ↔ 管理平台</div>
+
+<div class="toc">
+<h3>目录</h3>
+<ul>
+  <li><a href="#s1">1. 概述</a></li>
+  <li><a href="#s2">2. 连接规范</a></li>
+  <li><a href="#s3">3. Topic命名规范</a></li>
+  <li><a href="#s4">4. 公共数据结构</a></li>
+  <li><a href="#s5">5. 上行消息（设备→平台）</a>
+    <ul>
+      <li><a href="#s5-1">5.1 设备注册</a></li>
+      <li><a href="#s5-2">5.2 心跳上报</a></li>
+      <li><a href="#s5-3">5.3 电池实时数据上报</a></li>
+      <li><a href="#s5-4">5.4 开关状态上报</a></li>
+      <li><a href="#s5-5">5.5 单体电压上报</a></li>
+      <li><a href="#s5-6">5.6 GPS定位上报</a></li>
+      <li><a href="#s5-7">5.7 告警/故障上报</a></li>
+      <li><a href="#s5-8">5.8 OTA升级状态上报</a></li>
+    </ul>
+  </li>
+  <li><a href="#s6">6. 下行消息（平台→设备）</a>
+    <ul>
+      <li><a href="#s6-1">6.1 设备锁定/解锁</a></li>
+      <li><a href="#s6-2">6.2 设备重启</a></li>
+      <li><a href="#s6-3">6.3 设备休眠/唤醒</a></li>
+      <li><a href="#s6-4">6.4 GPS模块重启</a></li>
+      <li><a href="#s6-5">6.5 参数配置下发</a></li>
+      <li><a href="#s6-6">6.6 故障消除</a></li>
+      <li><a href="#s6-7">6.7 OTA升级指令</a></li>
+      <li><a href="#s6-8">6.8 同步数据请求</a></li>
+    </ul>
+  </li>
+  <li><a href="#s7">7. 响应码定义</a></li>
+  <li><a href="#s8">8. 告警/故障码定义</a></li>
+  <li><a href="#s9">9. 枚举值定义</a></li>
+  <li><a href="#s10">10. 附录</a></li>
+</ul>
+</div>
+
+<!-- ====== 1. 概述 ====== -->
+<h2 id="s1">1. 概述</h2>
+<div class="card">
+  <p>本协议定义了BMS（电池管理系统）设备端与管理平台之间的MQTT通信接口。设备端通过MQTT协议向平台上报电池实时数据、开关状态、电压信息、GPS定位、告警故障等信息；平台通过MQTT协议向设备下发控制指令，包括设备锁定/解锁、重启、休眠/唤醒、参数配置、故障消除、OTA升级等操作。</p>
+  <h4>通信架构</h4>
+  <pre><span class="com">┌─────────────┐     MQTT      ┌─────────────────┐     HTTP/WS    ┌──────────────┐</span>
+<span class="com">│  BMS设备端   │ ──────────→  │  MQTT Broker    │ ──────────→   │  管理平台后端  │</span>
+<span class="com">│ (硬件板子)   │ ←──────────  │  (消息中间件)    │ ←──────────   │  (BMS系统)    │</span>
+<span class="com">└─────────────┘   上行/下行    └─────────────────┘    订阅/推送    └──────────────┘</span></pre>
+  <h4>协议特点</h4>
+  <ul style="padding-left:20px;">
+    <li>基于MQTT 3.1.1协议，支持QoS 0/1/2</li>
+    <li>消息格式：JSON</li>
+    <li>编码方式：UTF-8</li>
+    <li>支持遗嘱消息（LWT）实现离线检测</li>
+    <li>支持Retained Message实现设备状态保持</li>
+  </ul>
+</div>
+
+<!-- ====== 2. 连接规范 ====== -->
+<h2 id="s2">2. 连接规范</h2>
+<div class="card">
+  <h3>2.1 Broker连接参数</h3>
+  <table>
+    <tr><th>参数</th><th>说明</th><th>示例值</th></tr>
+    <tr><td>Broker地址</td><td>MQTT服务器地址</td><td>mqtt://broker.bms-system.com</td></tr>
+    <tr><td>TCP端口</td><td>非加密连接端口</td><td>1883</td></tr>
+    <tr><td>SSL/TLS端口</td><td>加密连接端口（推荐）</td><td>8883</td></tr>
+    <tr><td>WebSocket端口</td><td>WebSocket连接端口</td><td>8084</td></tr>
+    <tr><td>心跳间隔</td><td>Keep Alive间隔（秒）</td><td>60</td></tr>
+    <tr><td>连接超时</td><td>连接超时时间（秒）</td><td>15</td></tr>
+  </table>
+  <h3>2.2 Client ID规则</h3>
+  <p>Client ID格式：<code>bms_device_{IMEI}</code></p>
+  <p>示例：<code>bms_device_864114070050327</code></p>
+  <div class="warn">注意：Client ID必须全局唯一，使用设备IMEI号确保唯一性。同一IMEI不允许同时建立多个连接。</div>
+  <h3>2.3 认证方式</h3>
+  <table>
+    <tr><th>参数</th><th>说明</th></tr>
+    <tr><td>用户名</td><td>设备IMEI号</td></tr>
+    <tr><td>密码</td><td>设备出厂时预置的Token（AES加密）</td></tr>
+  </table>
+  <h3>2.4 遗嘱消息（LWT）</h3>
+  <p>设备连接时设置遗嘱消息，当设备异常断线时Broker自动发布离线通知：</p>
+  <table>
+    <tr><th>参数</th><th>值</th></tr>
+    <tr><td>LWT Topic</td><td><code>bms/device/{imei}/status</code></td></tr>
+    <tr><td>LWT Payload</td><td><code>{"imei":"{imei}","online":false,"timestamp":"{ISO8601时间}"}</code></td></tr>
+    <tr><td>LWT QoS</td><td>1</td></tr>
+    <tr><td>LWT Retain</td><td>true</td></tr>
+  </table>
+  <h3>2.5 QoS等级约定</h3>
+  <table>
+    <tr><th>消息类型</th><th>QoS等级</th><th>说明</th></tr>
+    <tr><td>心跳上报</td><td>0</td><td>允许丢失，高频消息</td></tr>
+    <tr><td>电池实时数据</td><td>1</td><td>至少一次，确保到达</td></tr>
+    <tr><td>告警/故障</td><td>1</td><td>至少一次，确保告警不丢失</td></tr>
+    <tr><td>设备注册</td><td>1</td><td>至少一次，确保注册成功</td></tr>
+    <tr><td>下行控制指令</td><td>1</td><td>至少一次，需设备确认</td></tr>
+    <tr><td>OTA升级指令</td><td>2</td><td>恰好一次，确保不重复执行</td></tr>
+  </table>
+</div>
+
+<!-- ====== 3. Topic命名规范 ====== -->
+<h2 id="s3">3. Topic命名规范</h2>
+<div class="card">
+  <h3>3.1 命名格式</h3>
+  <table>
+    <tr><th>方向</th><th>格式</th><th>说明</th></tr>
+    <tr><td><span class="tag tag-up">上行</span></td><td><code>bms/device/{imei}/{type}</code></td><td>设备上报数据</td></tr>
+    <tr><td><span class="tag tag-down">下行</span></td><td><code>bms/device/{imei}/cmd/{action}</code></td><td>平台下发指令</td></tr>
+    <tr><td><span class="tag tag-up">上行</span></td><td><code>bms/device/{imei}/resp</code></td><td>设备响应下行指令</td></tr>
+  </table>
+  <div class="note">说明：<code>{imei}</code> 替换为设备实际IMEI号；<code>{type}</code> 为消息类型；<code>{action}</code> 为指令动作类型。</div>
+  <h3>3.2 Topic清单</h3>
+  <table>
+    <tr><th>方向</th><th>Topic</th><th>说明</th><th>QoS</th><th>Retain</th></tr>
+    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/register</td><td>设备注册</td><td>1</td><td>false</td></tr>
+    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/heartbeat</td><td>心跳上报</td><td>0</td><td>false</td></tr>
+    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/status</td><td>在线状态（含LWT）</td><td>1</td><td>true</td></tr>
+    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/data</td><td>电池实时数据</td><td>1</td><td>false</td></tr>
+    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/switch</td><td>开关状态</td><td>1</td><td>false</td></tr>
+    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/voltage</td><td>单体电压</td><td>1</td><td>false</td></tr>
+    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/gps</td><td>GPS定位</td><td>1</td><td>false</td></tr>
+    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/alarm</td><td>告警/故障</td><td>1</td><td>false</td></tr>
+    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/ota/status</td><td>OTA升级状态</td><td>1</td><td>false</td></tr>
+    <tr><td><span class="tag tag-down">下行</span></td><td>bms/device/{imei}/cmd/lock</td><td>设备锁定/解锁</td><td>1</td><td>false</td></tr>
+    <tr><td><span class="tag tag-down">下行</span></td><td>bms/device/{imei}/cmd/restart</td><td>设备重启</td><td>1</td><td>false</td></tr>
+    <tr><td><span class="tag tag-down">下行</span></td><td>bms/device/{imei}/cmd/sleep</td><td>休眠/唤醒</td><td>1</td><td>false</td></tr>
+    <tr><td><span class="tag tag-down">下行</span></td><td>bms/device/{imei}/cmd/gps_restart</td><td>GPS模块重启</td><td>1</td><td>false</td></tr>
+    <tr><td><span class="tag tag-down">下行</span></td><td>bms/device/{imei}/cmd/config</td><td>参数配置下发</td><td>1</td><td>false</td></tr>
+    <tr><td><span class="tag tag-down">下行</span></td><td>bms/device/{imei}/cmd/fault_clear</td><td>故障消除</td><td>1</td><td>false</td></tr>
+    <tr><td><span class="tag tag-down">下行</span></td><td>bms/device/{imei}/cmd/ota</td><td>OTA升级指令</td><td>2</td><td>false</td></tr>
+    <tr><td><span class="tag tag-down">下行</span></td><td>bms/device/{imei}/cmd/sync</td><td>同步数据请求</td><td>1</td><td>false</td></tr>
+    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/resp</td><td>指令执行响应</td><td>1</td><td>false</td></tr>
+  </table>
+</div>
+
+<!-- ====== 4. 公共数据结构 ====== -->
+<h2 id="s4">4. 公共数据结构</h2>
+<div class="card">
+  <h3>4.1 公共字段</h3>
+  <p>所有上行消息的JSON Payload均包含以下公共字段：</p>
+  <table class="field-table">
+    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+    <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备IMEI号（15位数字）</td></tr>
+    <tr><td>msgId</td><td>String</td><td class="req">是</td><td>消息唯一ID，UUID格式，用于消息去重</td></tr>
+    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>消息时间，ISO 8601格式：yyyy-MM-ddTHH:mm:ssZ</td></tr>
+    <tr><td>msgType</td><td>String</td><td class="req">是</td><td>消息类型，见3.2节Topic清单中的type值</td></tr>
+  </table>
+  <h3>4.2 下行指令公共字段</h3>
+  <table class="field-table">
+    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>指令唯一ID，UUID格式</td></tr>
+    <tr><td>action</td><td>String</td><td class="req">是</td><td>指令动作类型</td></tr>
+    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>下发时间，ISO 8601格式</td></tr>
+    <tr><td>params</td><td>Object</td><td class="opt">否</td><td>指令参数，不同action有不同的参数</td></tr>
+    <tr><td>timeout</td><td>Integer</td><td class="opt">否</td><td>超时时间（秒），默认30</td></tr>
+  </table>
+  <h3>4.3 设备响应公共字段</h3>
+  <p>设备收到下行指令后，需在 <code>bms/device/{imei}/resp</code> 上发布响应：</p>
+  <table class="field-table">
+    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>对应的指令ID</td></tr>
+    <tr><td>code</td><td>Integer</td><td class="req">是</td><td>响应码，0=成功，非0=失败（见第7节）</td></tr>
+    <tr><td>message</td><td>String</td><td class="opt">否</td><td>响应描述</td></tr>
+    <tr><td>data</td><td>Object</td><td class="opt">否</td><td>返回数据（部分指令需要）</td></tr>
+    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>响应时间</td></tr>
+  </table>
+</div>
+
+<!-- ====== 5. 上行消息 ====== -->
+<h2 id="s5">5. 上行消息（设备→平台）</h2>
+
+<!-- 5.1 设备注册 -->
+<h3 id="s5-1">5.1 设备注册 <span class="tag tag-up">上行</span></h3>
+<div class="card">
+  <p><b>Topic：</b><code>bms/device/{imei}/register</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
+  <p>设备首次上线或重新连接时发送注册消息，上报设备基础信息。</p>
+  <h4>请求字段</h4>
+  <table class="field-table">
+    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+    <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备IMEI号</td></tr>
+    <tr><td>imsi</td><td>String</td><td class="req">是</td><td>SIM卡IMSI号</td></tr>
+    <tr><td>deviceType</td><td>String</td><td class="req">是</td><td>设备型号，如 ZLB005D1507000_00</td></tr>
+    <tr><td>productType</td><td>String</td><td class="req">是</td><td>产品类型，如 家庭储能BMS、铅改锂储能BMS</td></tr>
+    <tr><td>batteryType</td><td>String</td><td class="req">是</td><td>电池类型，如 磷酸铁锂、三元锂</td></tr>
+    <tr><td>batteryStrings</td><td>Integer</td><td class="req">是</td><td>电池串数</td></tr>
+    <tr><td>hwVersion</td><td>String</td><td class="req">是</td><td>硬件版本号，如 AB3000X_H15S64Ah</td></tr>
+    <tr><td>swVersion</td><td>String</td><td class="req">是</td><td>软件版本号</td></tr>
+    <tr><td>sysVersion</td><td>String</td><td class="req">是</td><td>系统版本号</td></tr>
+    <tr><td>protocolVersion</td><td>String</td><td class="req">是</td><td>协议版本号，如 V1.0</td></tr>
+    <tr><td>msgId</td><td>String</td><td class="req">是</td><td>消息唯一ID</td></tr>
+    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>注册时间</td></tr>
+  </table>
+  <h4>示例</h4>
+  <pre>{
+  <span class="key">"imei"</span>: <span class="str">"864114070050327"</span>,
+  <span class="key">"imsi"</span>: <span class="str">"999010000000000"</span>,
+  <span class="key">"deviceType"</span>: <span class="str">"ZLB005D1507000_00"</span>,
+  <span class="key">"productType"</span>: <span class="str">"家庭储能BMS"</span>,
+  <span class="key">"batteryType"</span>: <span class="str">"磷酸铁锂"</span>,
+  <span class="key">"batteryStrings"</span>: <span class="num">16</span>,
+  <span class="key">"hwVersion"</span>: <span class="str">"AB3000X_H15S64Ah"</span>,
+  <span class="key">"swVersion"</span>: <span class="str">"ZLB005D-V2.3.1"</span>,
+  <span class="key">"sysVersion"</span>: <span class="str">"F0-AB3000X-VR2025042"</span>,
+  <span class="key">"protocolVersion"</span>: <span class="str">"V1.0"</span>,
+  <span class="key">"msgId"</span>: <span class="str">"a1b2c3d4-e5f6-7890-abcd-ef1234567890"</span>,
+  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T08:30:00Z"</span>
+}</pre>
+</div>
+
+<!-- 5.2 心跳上报 -->
+<h3 id="s5-2">5.2 心跳上报 <span class="tag tag-up">上行</span></h3>
+<div class="card">
+  <p><b>Topic：</b><code>bms/device/{imei}/heartbeat</code> &nbsp;|&nbsp; <b>QoS：</b>0</p>
+  <p>设备定期发送心跳消息，上报基本状态。心跳间隔默认60秒，可通过平台配置修改。</p>
+  <h4>请求字段</h4>
+  <table class="field-table">
+    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+    <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备IMEI号</td></tr>
+    <tr><td>online</td><td>Boolean</td><td class="req">是</td><td>在线状态，固定为true</td></tr>
+    <tr><td>soc</td><td>Float</td><td class="opt">否</td><td>当前SOC(%)，0-100</td></tr>
+    <tr><td>totalVoltage</td><td>Float</td><td class="opt">否</td><td>总电压(V)</td></tr>
+    <tr><td>current</td><td>Float</td><td class="opt">否</td><td>电流(A)，正=充电，负=放电</td></tr>
+    <tr><td>deviceStatus</td><td>String</td><td class="req">是</td><td>设备状态：online/offline/working</td></tr>
+    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>心跳时间</td></tr>
+  </table>
+  <h4>示例</h4>
+  <pre>{
+  <span class="key">"imei"</span>: <span class="str">"864114070050327"</span>,
+  <span class="key">"online"</span>: <span class="num">true</span>,
+  <span class="key">"soc"</span>: <span class="num">85.5</span>,
+  <span class="key">"totalVoltage"</span>: <span class="num">52.3</span>,
+  <span class="key">"current"</span>: <span class="num">10.2</span>,
+  <span class="key">"deviceStatus"</span>: <span class="str">"working"</span>,
+  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T08:31:00Z"</span>
+}</pre>
+</div>
+
+<!-- 5.3 电池实时数据 -->
+<h3 id="s5-3">5.3 电池实时数据上报 <span class="tag tag-up">上行</span></h3>
+<div class="card">
+  <p><b>Topic：</b><code>bms/device/{imei}/data</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
+  <p>设备定期上报电池实时数据，默认上报间隔30秒，可通过平台配置修改。</p>
+  <h4>请求字段</h4>
+  <table class="field-table">
+    <tr><th>字段</th><th>类型</th><th>必填</th><th>单位</th><th>说明</th></tr>
+    <tr><td>imei</td><td>String</td><td class="req">是</td><td>-</td><td>设备IMEI号</td></tr>
+    <tr><td>msgId</td><td>String</td><td class="req">是</td><td>-</td><td>消息唯一ID</td></tr>
+    <tr><td>totalVoltage</td><td>Float</td><td class="req">是</td><td>V</td><td>电池总电压</td></tr>
+    <tr><td>totalVoltageMv</td><td>Integer</td><td class="req">是</td><td>mV</td><td>电池总电压（毫伏，用于设备运维列表展示）</td></tr>
+    <tr><td>current</td><td>Float</td><td class="req">是</td><td>A</td><td>电流，正=充电，负=放电</td></tr>
+    <tr><td>soc</td><td>Float</td><td class="req">是</td><td>%</td><td>电池剩余电量百分比，0-100</td></tr>
+    <tr><td>soh</td><td>Float</td><td class="req">是</td><td>%</td><td>电池健康度百分比，0-100</td></tr>
+    <tr><td>cycleCount</td><td>Integer</td><td class="req">是</td><td>次</td><td>电池循环充放电次数</td></tr>
+    <tr><td>mosTemp</td><td>Float</td><td class="req">是</td><td>℃</td><td>MOS管温度</td></tr>
+    <tr><td>heatTemp</td><td>Float</td><td class="req">是</td><td>℃</td><td>加热温度</td></tr>
+    <tr><td>batteryTemp</td><td>Float</td><td class="req">是</td><td>℃</td><td>电池温度</td></tr>
+    <tr><td>batteryTempMax</td><td>Float</td><td class="opt">否</td><td>℃</td><td>最高电池温度</td></tr>
+    <tr><td>batteryTempMin</td><td>Float</td><td class="opt">否</td><td>℃</td><td>最低电池温度</td></tr>
+    <tr><td>protectionStatus</td><td>Integer</td><td class="req">是</td><td>-</td><td>保护状态码，bit位定义见9.2节</td></tr>
+    <tr><td>systemFault</td><td>Integer</td><td class="req">是</td><td>-</td><td>系统故障码，bit位定义见9.3节</td></tr>
+    <tr><td>dailyMileage</td><td>Integer</td><td class="opt">否</td><td>米</td><td>当天行驶里程（移动设备适用）</td></tr>
+    <tr><td>remainingCapacity</td><td>Float</td><td class="opt">否</td><td>Ah</td><td>剩余容量</td></tr>
+    <tr><td>ratedCapacity</td><td>Float</td><td class="opt">否</td><td>Ah</td><td>额定容量</td></tr>
+    <tr><td>chargeCount</td><td>Integer</td><td class="opt">否</td><td>次</td><td>充电次数</td></tr>
+    <tr><td>dischargeCount</td><td>Integer</td><td class="opt">否</td><td>次</td><td>放电次数</td></tr>
+    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>-</td><td>数据采集时间</td></tr>
+  </table>
+  <h4>示例</h4>
+  <pre>{
+  <span class="key">"imei"</span>: <span class="str">"864114070050327"</span>,
+  <span class="key">"msgId"</span>: <span class="str">"d4e5f6a7-b8c9-0123-4567-89abcdef0123"</span>,
+  <span class="key">"totalVoltage"</span>: <span class="num">52.3</span>,
+  <span class="key">"totalVoltageMv"</span>: <span class="num">52300</span>,
+  <span class="key">"current"</span>: <span class="num">10.2</span>,
+  <span class="key">"soc"</span>: <span class="num">85.5</span>,
+  <span class="key">"soh"</span>: <span class="num">92.0</span>,
+  <span class="key">"cycleCount"</span>: <span class="num">328</span>,
+  <span class="key">"mosTemp"</span>: <span class="num">35.2</span>,
+  <span class="key">"heatTemp"</span>: <span class="num">25.0</span>,
+  <span class="key">"batteryTemp"</span>: <span class="num">28.5</span>,
+  <span class="key">"batteryTempMax"</span>: <span class="num">29.1</span>,
+  <span class="key">"batteryTempMin"</span>: <span class="num">27.8</span>,
+  <span class="key">"protectionStatus"</span>: <span class="num">0</span>,
+  <span class="key">"systemFault"</span>: <span class="num">0</span>,
+  <span class="key">"remainingCapacity"</span>: <span class="num">85.5</span>,
+  <span class="key">"ratedCapacity"</span>: <span class="num">100.0</span>,
+  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T08:30:30Z"</span>
+}</pre>
+</div>
+
+<!-- 5.4 开关状态 -->
+<h3 id="s5-4">5.4 开关状态上报 <span class="tag tag-up">上行</span></h3>
+<div class="card">
+  <p><b>Topic：</b><code>bms/device/{imei}/switch</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
+  <p>设备上报各开关的实时状态，可与电池实时数据同步上报或独立上报。</p>
+  <h4>请求字段</h4>
+  <table class="field-table">
+    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+    <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备IMEI号</td></tr>
+    <tr><td>msgId</td><td>String</td><td class="req">是</td><td>消息唯一ID</td></tr>
+    <tr><td>chargeSwitch</td><td>Boolean</td><td class="req">是</td><td>充电开关：true=开，false=关</td></tr>
+    <tr><td>dischargeSwitch</td><td>Boolean</td><td class="req">是</td><td>放电开关</td></tr>
+    <tr><td>heatSwitch</td><td>Boolean</td><td class="req">是</td><td>加热开关</td></tr>
+    <tr><td>preChargeSwitch</td><td>Boolean</td><td class="req">是</td><td>预充开关</td></tr>
+    <tr><td>currentLimitSwitch</td><td>Boolean</td><td class="req">是</td><td>限流开关</td></tr>
+    <tr><td>balanceSwitch</td><td>Boolean</td><td class="req">是</td><td>均衡开关</td></tr>
+    <tr><td>bluetoothSwitch</td><td>Boolean</td><td class="req">是</td><td>蓝牙开关</td></tr>
+    <tr><td>parallelChargeSwitch</td><td>Boolean</td><td class="req">是</td><td>并充开关</td></tr>
+    <tr><td>parallelDischargeSwitch</td><td>Boolean</td><td class="req">是</td><td>并放开关</td></tr>
+    <tr><td>ledSwitch</td><td>Boolean</td><td class="req">是</td><td>LED开关</td></tr>
+    <tr><td>chargerSwitch</td><td>Boolean</td><td class="req">是</td><td>充电机开关</td></tr>
+    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>状态采集时间</td></tr>
+  </table>
+  <h4>示例</h4>
+  <pre>{
+  <span class="key">"imei"</span>: <span class="str">"864114070050327"</span>,
+  <span class="key">"msgId"</span>: <span class="str">"e5f6a7b8-c9d0-1234-5678-9abcdef01234"</span>,
+  <span class="key">"chargeSwitch"</span>: <span class="num">true</span>,
+  <span class="key">"dischargeSwitch"</span>: <span class="num">true</span>,
+  <span class="key">"heatSwitch"</span>: <span class="num">false</span>,
+  <span class="key">"preChargeSwitch"</span>: <span class="num">false</span>,
+  <span class="key">"currentLimitSwitch"</span>: <span class="num">false</span>,
+  <span class="key">"balanceSwitch"</span>: <span class="num">true</span>,
+  <span class="key">"bluetoothSwitch"</span>: <span class="num">false</span>,
+  <span class="key">"parallelChargeSwitch"</span>: <span class="num">false</span>,
+  <span class="key">"parallelDischargeSwitch"</span>: <span class="num">false</span>,
+  <span class="key">"ledSwitch"</span>: <span class="num">true</span>,
+  <span class="key">"chargerSwitch"</span>: <span class="num">true</span>,
+  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T08:30:30Z"</span>
+}</pre>
+</div>
+
+<!-- 5.5 单体电压 -->
+<h3 id="s5-5">5.5 单体电压上报 <span class="tag tag-up">上行</span></h3>
+<div class="card">
+  <p><b>Topic：</b><code>bms/device/{imei}/voltage</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
+  <p>设备上报各串电池单体的电压数据，以及最高/最低电压和压差。</p>
+  <h4>请求字段</h4>
+  <table class="field-table">
+    <tr><th>字段</th><th>类型</th><th>必填</th><th>单位</th><th>说明</th></tr>
+    <tr><td>imei</td><td>String</td><td class="req">是</td><td>-</td><td>设备IMEI号</td></tr>
+    <tr><td>msgId</td><td>String</td><td class="req">是</td><td>-</td><td>消息唯一ID</td></tr>
+    <tr><td>cellCount</td><td>Integer</td><td class="req">是</td><td>-</td><td>电池串数</td></tr>
+    <tr><td>cellVoltages</td><td>Integer[]</td><td class="req">是</td><td>mV</td><td>各串电池电压数组，长度等于cellCount</td></tr>
+    <tr><td>maxVoltage</td><td>Integer</td><td class="req">是</td><td>mV</td><td>最高单体电压</td></tr>
+    <tr><td>minVoltage</td><td>Integer</td><td class="req">是</td><td>mV</td><td>最低单体电压</td></tr>
+    <tr><td>voltageDiff</td><td>Integer</td><td class="req">是</td><td>mV</td><td>最高与最低电压差值</td></tr>
+    <tr><td>maxVoltageIndex</td><td>Integer</td><td class="req">是</td><td>-</td><td>最高电压所在串号（从1开始）</td></tr>
+    <tr><td>minVoltageIndex</td><td>Integer</td><td class="req">是</td><td>-</td><td>最低电压所在串号（从1开始）</td></tr>
+    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>-</td><td>采集时间</td></tr>
+  </table>
+  <h4>示例</h4>
+  <pre>{
+  <span class="key">"imei"</span>: <span class="str">"864114070050327"</span>,
+  <span class="key">"msgId"</span>: <span class="str">"f6a7b8c9-d0e1-2345-6789-abcdef012345"</span>,
+  <span class="key">"cellCount"</span>: <span class="num">16</span>,
+  <span class="key">"cellVoltages"</span>: [<span class="num">3265</span>, <span class="num">3268</span>, <span class="num">3270</span>, <span class="num">3263</span>, <span class="num">3271</span>, <span class="num">3269</span>, <span class="num">3267</span>, <span class="num">3264</span>, <span class="num">3272</span>, <span class="num">3266</span>, <span class="num">3265</span>, <span class="num">3268</span>, <span class="num">3270</span>, <span class="num">3263</span>, <span class="num">3269</span>, <span class="num">3271</span>],
+  <span class="key">"maxVoltage"</span>: <span class="num">3272</span>,
+  <span class="key">"minVoltage"</span>: <span class="num">3263</span>,
+  <span class="key">"voltageDiff"</span>: <span class="num">9</span>,
+  <span class="key">"maxVoltageIndex"</span>: <span class="num">9</span>,
+  <span class="key">"minVoltageIndex"</span>: <span class="num">4</span>,
+  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T08:30:30Z"</span>
+}</pre>
+</div>
+
+<!-- 5.6 GPS定位 -->
+<h3 id="s5-6">5.6 GPS定位上报 <span class="tag tag-up">上行</span></h3>
+<div class="card">
+  <p><b>Topic：</b><code>bms/device/{imei}/gps</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
+  <p>设备上报GPS定位数据，用于定位监控功能。移动设备实时上报，固定设备可低频上报。</p>
+  <h4>请求字段</h4>
+  <table class="field-table">
+    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+    <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备IMEI号</td></tr>
+    <tr><td>msgId</td><td>String</td><td class="req">是</td><td>消息唯一ID</td></tr>
+    <tr><td>latitude</td><td>Double</td><td class="req">是</td><td>纬度，WGS84坐标系，6位小数</td></tr>
+    <tr><td>longitude</td><td>Double</td><td class="req">是</td><td>经度，WGS84坐标系，6位小数</td></tr>
+    <tr><td>altitude</td><td>Double</td><td class="opt">否</td><td>海拔高度（米）</td></tr>
+    <tr><td>speed</td><td>Float</td><td class="opt">否</td><td>移动速度（km/h）</td></tr>
+    <tr><td>direction</td><td>Float</td><td class="opt">否</td><td>移动方向（0-360度）</td></tr>
+    <tr><td>gpsAccuracy</td><td>Float</td><td class="opt">否</td><td>定位精度（米）</td></tr>
+    <tr><td>satelliteCount</td><td>Integer</td><td class="opt">否</td><td>卫星数量</td></tr>
+    <tr><td>gpsStatus</td><td>Integer</td><td class="req">是</td><td>GPS状态：0=未定位，1=已定位，2=模块异常</td></tr>
+    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>定位时间</td></tr>
+  </table>
+  <h4>示例</h4>
+  <pre>{
+  <span class="key">"imei"</span>: <span class="str">"864114070050327"</span>,
+  <span class="key">"msgId"</span>: <span class="str">"a7b8c9d0-e1f2-3456-7890-bcdef0123456"</span>,
+  <span class="key">"latitude"</span>: <span class="num">22.656432</span>,
+  <span class="key">"longitude"</span>: <span class="num">113.923456</span>,
+  <span class="key">"altitude"</span>: <span class="num">35.2</span>,
+  <span class="key">"speed"</span>: <span class="num">0.0</span>,
+  <span class="key">"direction"</span>: <span class="num">0</span>,
+  <span class="key">gpsAccuracy"</span>: <span class="num">5.0</span>,
+  <span class="key">"satelliteCount"</span>: <span class="num">12</span>,
+  <span class="key">"gpsStatus"</span>: <span class="num">1</span>,
+  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T08:30:30Z"</span>
+}</pre>
+</div>
+
+<!-- 5.7 告警/故障 -->
+<h3 id="s5-7">5.7 告警/故障上报 <span class="tag tag-up">上行</span></h3>
+<div class="card">
+  <p><b>Topic：</b><code>bms/device/{imei}/alarm</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
+  <p>设备检测到告警或故障时主动上报，支持告警产生和告警恢复两种事件。</p>
+  <h4>请求字段</h4>
+  <table class="field-table">
+    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+    <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备IMEI号</td></tr>
+    <tr><td>msgId</td><td>String</td><td class="req">是</td><td>消息唯一ID</td></tr>
+    <tr><td>alarmType</td><td>String</td><td class="req">是</td><td>告警类型，见8.1节告警码表</td></tr>
+    <tr><td>alarmCode</td><td>Integer</td><td class="req">是</td><td>告警/故障码，见第8节</td></tr>
+    <tr><td>alarmLevel</td><td>String</td><td class="req">是</td><td>告警级别：warning（警告）/ fault（故障）/ critical（严重）</td></tr>
+    <tr><td>alarmEvent</td><td>String</td><td class="req">是</td><td>事件类型：trigger（触发）/ recover（恢复）</td></tr>
+    <tr><td>alarmDesc</td><td>String</td><td class="req">是</td><td>告警描述文字</td></tr>
+    <tr><td>currentValues</td><td>Object</td><td class="opt">否</td><td>触发时的关键数据快照</td></tr>
+    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>告警时间</td></tr>
+  </table>
+  <h4>示例 — 充电机高温故障</h4>
+  <pre>{
+  <span class="key">"imei"</span>: <span class="str">"867584030010156"</span>,
+  <span class="key">"msgId"</span>: <span class="str">"b8c9d0e1-f2a3-4567-8901-cdef01234567"</span>,
+  <span class="key">"alarmType"</span>: <span class="str">"温度告警"</span>,
+  <span class="key">"alarmCode"</span>: <span class="num">201</span>,
+  <span class="key">"alarmLevel"</span>: <span class="str">"fault"</span>,
+  <span class="key">"alarmEvent"</span>: <span class="str">"trigger"</span>,
+  <span class="key">"alarmDesc"</span>: <span class="str">"充电机高温故障"</span>,
+  <span class="key">"currentValues"</span>: {
+    <span class="key">"chargerTemp"</span>: <span class="num">68.5</span>,
+    <span class="key">"threshold"</span>: <span class="num">65</span>
+  },
+  <span class="key">"timestamp"</span>: <span class="str">"2026-05-21T14:17:18Z"</span>
+}</pre>
+  <h4>示例 — 限流故障恢复</h4>
+  <pre>{
+  <span class="key">"imei"</span>: <span class="str">"867584030010155"</span>,
+  <span class="key">"msgId"</span>: <span class="str">"c9d0e1f2-a3b4-5678-9012-def012345678"</span>,
+  <span class="key">"alarmType"</span>: <span class="str">"电流告警"</span>,
+  <span class="key">"alarmCode"</span>: <span class="num">105</span>,
+  <span class="key">"alarmLevel"</span>: <span class="str">"fault"</span>,
+  <span class="key">"alarmEvent"</span>: <span class="str">"recover"</span>,
+  <span class="key">"alarmDesc"</span>: <span class="str">"限流故障已恢复"</span>,
+  <span class="key">"timestamp"</span>: <span class="str">"2026-05-21T14:20:18Z"</span>
+}</pre>
+</div>
+
+<!-- 5.8 OTA状态 -->
+<h3 id="s5-8">5.8 OTA升级状态上报 <span class="tag tag-up">上行</span></h3>
+<div class="card">
+  <p><b>Topic：</b><code>bms/device/{imei}/ota/status</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
+  <p>设备执行OTA升级时上报进度和结果状态。</p>
+  <h4>请求字段</h4>
+  <table class="field-table">
+    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+    <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备IMEI号</td></tr>
+    <tr><td>taskId</td><td>String</td><td class="req">是</td><td>升级任务ID（由OTA指令下发时分配）</td></tr>
+    <tr><td>otaStatus</td><td>String</td><td class="req">是</td><td>升级状态：downloading/installing/success/failed/rollback</td></tr>
+    <tr><td>progress</td><td>Integer</td><td class="req">是</td><td>升级进度百分比，0-100</td></tr>
+    <tr><td>firmwareVersion</td><td>String</td><td class="opt">否</td><td>目标固件版本</td></tr>
+    <tr><td>errorCode</td><td>Integer</td><td class="opt">否</td><td>失败错误码（status=failed时填写）</td></tr>
+    <tr><td>errorMsg</td><td>String</td><td class="opt">否</td><td>失败原因描述</td></tr>
+    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>状态时间</td></tr>
+  </table>
+  <h4>示例 — 升级中</h4>
+  <pre>{
+  <span class="key">"imei"</span>: <span class="str">"864114070050327"</span>,
+  <span class="key">"taskId"</span>: <span class="str">"ota-20260918-001"</span>,
+  <span class="key">"otaStatus"</span>: <span class="str">"installing"</span>,
+  <span class="key">"progress"</span>: <span class="num">45</span>,
+  <span class="key">"firmwareVersion"</span>: <span class="str">"V2.3.1"</span>,
+  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T09:15:00Z"</span>
+}</pre>
+  <h4>示例 — 升级成功</h4>
+  <pre>{
+  <span class="key">"imei"</span>: <span class="str">"864114070050327"</span>,
+  <span class="key">"taskId"</span>: <span class="str">"ota-20260918-001"</span>,
+  <span class="key">"otaStatus"</span>: <span class="str">"success"</span>,
+  <span class="key">"progress"</span>: <span class="num">100</span>,
+  <span class="key">"firmwareVersion"</span>: <span class="str">"V2.3.1"</span>,
+  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T09:25:00Z"</span>
+}</pre>
+</div>
+
+<!-- ====== 6. 下行消息 ====== -->
+<h2 id="s6">6. 下行消息（平台→设备）</h2>
+
+<!-- 6.1 设备锁定/解锁 -->
+<h3 id="s6-1">6.1 设备锁定/解锁 <span class="tag tag-down">下行</span></h3>
+<div class="card">
+  <p><b>Topic：</b><code>bms/device/{imei}/cmd/lock</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
+  <p>平台下发设备锁定或解锁指令。锁定后设备停止充放电，解锁后恢复正常。</p>
+  <h4>指令参数</h4>
+  <table class="field-table">
+    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>指令唯一ID</td></tr>
+    <tr><td>action</td><td>String</td><td class="req">是</td><td>固定值：<code>lock</code></td></tr>
+    <tr><td>params.lockState</td><td>String</td><td class="req">是</td><td>目标状态：<code>locked</code>（锁定）/ <code>unlocked</code>（解锁）</td></tr>
+    <tr><td>params.operator</td><td>String</td><td class="req">是</td><td>操作人用户名</td></tr>
+    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>下发时间</td></tr>
+    <tr><td>timeout</td><td>Integer</td><td class="opt">否</td><td>超时时间（秒），默认30</td></tr>
+  </table>
+  <h4>示例</h4>
+  <pre>{
+  <span class="key">"cmdId"</span>: <span class="str">"cmd-20260918-lock-001"</span>,
+  <span class="key">"action"</span>: <span class="str">"lock"</span>,
+  <span class="key">"params"</span>: {
+    <span class="key">"lockState"</span>: <span class="str">"locked"</span>,
+    <span class="key">"operator"</span>: <span class="str">"admin"</span>
+  },
+  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T10:00:00Z"</span>,
+  <span class="key">"timeout"</span>: <span class="num">30</span>
+}</pre>
+  <h4>设备响应</h4>
+  <pre>{
+  <span class="key">"cmdId"</span>: <span class="str">"cmd-20260918-lock-001"</span>,
+  <span class="key">"code"</span>: <span class="num">0</span>,
+  <span class="key">"message"</span>: <span class="str">"设备已锁定"</span>,
+  <span class="key">"data"</span>: { <span class="key">"lockState"</span>: <span class="str">"locked"</span> },
+  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T10:00:02Z"</span>
+}</pre>
+</div>
+
+<!-- 6.2 设备重启 -->
+<h3 id="s6-2">6.2 设备重启 <span class="tag tag-down">下行</span></h3>
+<div class="card">
+  <p><b>Topic：</b><code>bms/device/{imei}/cmd/restart</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
+  <p>平台下发设备重启指令。设备收到后执行软重启，重启完成后自动重新连接并注册。</p>
+  <h4>指令参数</h4>
+  <table class="field-table">
+    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>指令唯一ID</td></tr>
+    <tr><td>action</td><td>String</td><td class="req">是</td><td>固定值：<code>restart</code></td></tr>
+    <tr><td>params.restartType</td><td>String</td><td class="opt">否</td><td>重启类型：<code>soft</code>（软重启，默认）/ <code>hard</code>（硬重启）</td></tr>
+    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>下发时间</td></tr>
+    <tr><td>timeout</td><td>Integer</td><td class="opt">否</td><td>超时时间（秒），默认60</td></tr>
+  </table>
+  <h4>示例</h4>
+  <pre>{
+  <span class="key">"cmdId"</span>: <span class="str">"cmd-20260918-restart-001"</span>,
+  <span class="key">"action"</span>: <span class="str">"restart"</span>,
+  <span class="key">"params"</span>: { <span class="key">"restartType"</span>: <span class="str">"soft"</span> },
+  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T10:00:00Z"</span>,
+  <span class="key">"timeout"</span>: <span class="num">60</span>
+}</pre>
+  <div class="note">设备重启后无法立即响应，平台需等待设备重新上线注册后判定重启成功。超时后自动重连视为失败。</div>
+</div>
+
+<!-- 6.3 设备休眠/唤醒 -->
+<h3 id="s6-3">6.3 设备休眠/唤醒 <span class="tag tag-down">下行</span></h3>
+<div class="card">
+  <p><b>Topic：</b><code>bms/device/{imei}/cmd/sleep</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
+  <p>平台下发设备休眠或唤醒指令。休眠后设备进入低功耗模式，停止数据上报，仅维持心跳。</p>
+  <h4>指令参数</h4>
+  <table class="field-table">
+    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>指令唯一ID</td></tr>
+    <tr><td>action</td><td>String</td><td class="req">是</td><td>固定值：<code>sleep</code></td></tr>
+    <tr><td>params.mode</td><td>String</td><td class="req">是</td><td>目标模式：<code>sleep</code>（休眠）/ <code>wake</code>（唤醒）</td></tr>
+    <tr><td>params.sleepDuration</td><td>Integer</td><td class="opt">否</td><td>休眠时长（秒），0=持续休眠直到唤醒，默认0</td></tr>
+    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>下发时间</td></tr>
+  </table>
+  <h4>示例</h4>
+  <pre>{
+  <span class="key">"cmdId"</span>: <span class="str">"cmd-20260918-sleep-001"</span>,
+  <span class="key">"action"</span>: <span class="str">"sleep"</span>,
+  <span class="key">"params"</span>: { <span class="key">"mode"</span>: <span class="str">"sleep"</span>, <span class="key">"sleepDuration"</span>: <span class="num">0</span> },
+  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T10:00:00Z"</span>
+}</pre>
+</div>
+
+<!-- 6.4 GPS模块重启 -->
+<h3 id="s6-4">6.4 GPS模块重启 <span class="tag tag-down">下行</span></h3>
+<div class="card">
+  <p><b>Topic：</b><code>bms/device/{imei}/cmd/gps_restart</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
+  <p>平台下发GPS模块重启指令。用于GPS定位异常时尝试恢复。</p>
+  <h4>指令参数</h4>
+  <table class="field-table">
+    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>指令唯一ID</td></tr>
+    <tr><td>action</td><td>String</td><td class="req">是</td><td>固定值：<code>gps_restart</code></td></tr>
+    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>下发时间</td></tr>
+  </table>
+  <h4>示例</h4>
+  <pre>{
+  <span class="key">"cmdId"</span>: <span class="str">"cmd-20260918-gps-001"</span>,
+  <span class="key">"action"</span>: <span class="str">"gps_restart"</span>,
+  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T10:00:00Z"</span>
+}</pre>
+</div>
+
+<!-- 6.5 参数配置下发 -->
+<h3 id="s6-5">6.5 参数配置下发 <span class="tag tag-down">下行</span></h3>
+<div class="card">
+  <p><b>Topic：</b><code>bms/device/{imei}/cmd/config</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
+  <p>平台向设备下发参数配置，包括阈值参数、上报间隔等。设备收到后更新本地配置并返回当前配置快照。</p>
+  <h4>指令参数</h4>
+  <table class="field-table">
+    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>指令唯一ID</td></tr>
+    <tr><td>action</td><td>String</td><td class="req">是</td><td>固定值：<code>config</code></td></tr>
+    <tr><td>params.configs</td><td>Object</td><td class="req">是</td><td>配置项键值对，见下表</td></tr>
+    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>下发时间</td></tr>
+  </table>
+  <h4>可配置参数项</h4>
+  <table class="field-table">
+    <tr><th>配置项Key</th><th>类型</th><th>单位</th><th>说明</th></tr>
+    <tr><td>cellOverVoltageThreshold</td><td>Integer</td><td>mV</td><td>单体过压阈值</td></tr>
+    <tr><td>cellUnderVoltageThreshold</td><td>Integer</td><td>mV</td><td>单体低压阈值</td></tr>
+    <tr><td>cellOverVoltageProtect</td><td>Integer</td><td>mV</td><td>单体过压保护值</td></tr>
+    <tr><td>cellUnderVoltageProtect</td><td>Integer</td><td>mV</td><td>单体低压保护值</td></tr>
+    <tr><td>voltageDiffThreshold</td><td>Integer</td><td>mV</td><td>压差告警阈值</td></tr>
+    <tr><td>totalOverVoltageThreshold</td><td>Float</td><td>V</td><td>总电压过压阈值</td></tr>
+    <tr><td>batteryHighTempThreshold</td><td>Float</td><td>℃</td><td>电池高温告警阈值</td></tr>
+    <tr><td>batteryLowTempThreshold</td><td>Float</td><td>℃</td><td>电池低温告警阈值</td></tr>
+    <tr><td>mosHighTempThreshold</td><td>Float</td><td>℃</td><td>MOS高温告警阈值</td></tr>
+    <tr><td>chargerHighTempThreshold</td><td>Float</td><td>℃</td><td>充电机高温告警阈值</td></tr>
+    <tr><td>socLowAlarmThreshold</td><td>Float</td><td>%</td><td>SOC低电告警阈值</td></tr>
+    <tr><td>socLowProtectThreshold</td><td>Float</td><td>%</td><td>SOC极低保护阈值</td></tr>
+    <tr><td>sohLowAlarmThreshold</td><td>Float</td><td>%</td><td>SOH低告警阈值</td></tr>
+    <tr><td>cycleCountAlarmThreshold</td><td>Integer</td><td>次</td><td>循环次数告警阈值</td></tr>
+    <tr><td>dataReportInterval</td><td>Integer</td><td>秒</td><td>数据上报间隔</td></tr>
+    <tr><td>heartbeatInterval</td><td>Integer</td><td>秒</td><td>心跳上报间隔</td></tr>
+  </table>
+  <h4>示例</h4>
+  <pre>{
+  <span class="key">"cmdId"</span>: <span class="str">"cmd-20260918-config-001"</span>,
+  <span class="key">"action"</span>: <span class="str">"config"</span>,
+  <span class="key">"params"</span>: {
+    <span class="key">"configs"</span>: {
+      <span class="key">"cellOverVoltageThreshold"</span>: <span class="num">3650</span>,
+      <span class="key">"cellUnderVoltageThreshold"</span>: <span class="num">2500</span>,
+      <span class="key">"batteryHighTempThreshold"</span>: <span class="num">55.0</span>,
+      <span class="key">"socLowAlarmThreshold"</span>: <span class="num">20.0</span>,
+      <span class="key">"dataReportInterval"</span>: <span class="num">30</span>,
+      <span class="key">"heartbeatInterval"</span>: <span class="num">60</span>
+    }
+  },
+  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T10:00:00Z"</span>
+}</pre>
+</div>
+
+<!-- 6.6 故障消除 -->
+<h3 id="s6-6">6.6 故障消除 <span class="tag tag-down">下行</span></h3>
+<div class="card">
+  <p><b>Topic：</b><code>bms/device/{imei}/cmd/fault_clear</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
+  <p>平台下发故障消除指令，清除设备当前记录的故障状态。</p>
+  <h4>指令参数</h4>
+  <table class="field-table">
+    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>指令唯一ID</td></tr>
+    <tr><td>action</td><td>String</td><td class="req">是</td><td>固定值：<code>fault_clear</code></td></tr>
+    <tr><td>params.faultCode</td><td>Integer</td><td class="opt">否</td><td>指定故障码清除；不填则清除所有故障</td></tr>
+    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>下发时间</td></tr>
+  </table>
+  <h4>示例 — 清除所有故障</h4>
+  <pre>{
+  <span class="key">"cmdId"</span>: <span class="str">"cmd-20260918-fault-001"</span>,
+  <span class="key">"action"</span>: <span class="str">"fault_clear"</span>,
+  <span class="key">"params"</span>: {},
+  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T10:00:00Z"</span>
+}</pre>
+</div>
+
+<!-- 6.7 OTA升级 -->
+<h3 id="s6-7">6.7 OTA升级指令 <span class="tag tag-down">下行</span></h3>
+<div class="card">
+  <p><b>Topic：</b><code>bms/device/{imei}/cmd/ota</code> &nbsp;|&nbsp; <b>QoS：</b>2</p>
+  <p>平台下发OTA升级指令，设备收到后下载固件并执行升级。</p>
+  <h4>指令参数</h4>
+  <table class="field-table">
+    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>指令唯一ID</td></tr>
+    <tr><td>action</td><td>String</td><td class="req">是</td><td>固定值：<code>ota</code></td></tr>
+    <tr><td>params.taskId</td><td>String</td><td class="req">是</td><td>升级任务ID</td></tr>
+    <tr><td>params.firmwareUrl</td><td>String</td><td class="req">是</td><td>固件下载URL（HTTPS）</td></tr>
+    <tr><td>params.firmwareVersion</td><td>String</td><td class="req">是</td><td>目标固件版本号</td></tr>
+    <tr><td>params.firmwareSize</td><td>Integer</td><td class="req">是</td><td>固件大小（字节）</td></tr>
+    <tr><td>params.firmwareMd5</td><td>String</td><td class="req">是</td><td>固件MD5校验值</td></tr>
+    <tr><td>params.upgradeMode</td><td>String</td><td class="opt">否</td><td>升级模式：<code>immediate</code>（立即）/ <code>scheduled</code>（定时），默认immediate</td></tr>
+    <tr><td>params.scheduledTime</td><td>String</td><td class="opt">否</td><td>定时升级执行时间（upgradeMode=scheduled时必填）</td></tr>
+    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>下发时间</td></tr>
+    <tr><td>timeout</td><td>Integer</td><td class="opt">否</td><td>超时时间（秒），默认1800（30分钟）</td></tr>
+  </table>
+  <h4>示例</h4>
+  <pre>{
+  <span class="key">"cmdId"</span>: <span class="str">"cmd-20260918-ota-001"</span>,
+  <span class="key">"action"</span>: <span class="str">"ota"</span>,
+  <span class="key">"params"</span>: {
+    <span class="key">"taskId"</span>: <span class="str">"ota-20260918-001"</span>,
+    <span class="key">"firmwareUrl"</span>: <span class="str">"https://ota.bms-system.com/firmware/ZLB005D_V2.3.1.bin"</span>,
+    <span class="key">"firmwareVersion"</span>: <span class="str">"V2.3.1"</span>,
+    <span class="key">"firmwareSize"</span>: <span class="num">2570480</span>,
+    <span class="key">"firmwareMd5"</span>: <span class="str">"a1b2c3d4e5f67890abcdef1234567890"</span>,
+    <span class="key">"upgradeMode"</span>: <span class="str">"immediate"</span>
+  },
+  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T09:00:00Z"</span>,
+  <span class="key">"timeout"</span>: <span class="num">1800</span>
+}</pre>
+</div>
+
+<!-- 6.8 同步数据 -->
+<h3 id="s6-8">6.8 同步数据请求 <span class="tag tag-down">下行</span></h3>
+<div class="card">
+  <p><b>Topic：</b><code>bms/device/{imei}/cmd/sync</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
+  <p>平台请求设备立即上报一次完整的实时数据（电池数据+开关状态+电压信息）。</p>
+  <h4>指令参数</h4>
+  <table class="field-table">
+    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>指令唯一ID</td></tr>
+    <tr><td>action</td><td>String</td><td class="req">是</td><td>固定值：<code>sync</code></td></tr>
+    <tr><td>params.dataTypes</td><td>String[]</td><td class="opt">否</td><td>请求的数据类型：<code>data</code>/<code>switch</code>/<code>voltage</code>/<code>gps</code>，不填则全部同步</td></tr>
+    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>下发时间</td></tr>
+  </table>
+  <h4>示例</h4>
+  <pre>{
+  <span class="key">"cmdId"</span>: <span class="str">"cmd-20260918-sync-001"</span>,
+  <span class="key">"action"</span>: <span class="str">"sync"</span>,
+  <span class="key">"params"</span>: {
+    <span class="key">"dataTypes"</span>: [<span class="str">"data"</span>, <span class="str">"switch"</span>, <span class="str">"voltage"</span>]
+  },
+  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T10:00:00Z"</span>
+}</pre>
+  <div class="note">设备收到同步请求后，应在5秒内分别向 <code>bms/device/{imei}/data</code>、<code>bms/device/{imei}/switch</code>、<code>bms/device/{imei}/voltage</code> 发送一次最新数据，并在 <code>resp</code> 上返回确认。</div>
+</div>
+
+<!-- ====== 7. 响应码 ====== -->
+<h2 id="s7">7. 响应码定义</h2>
+<div class="card">
+  <table>
+    <tr><th>响应码</th><th>说明</th></tr>
+    <tr><td>0</td><td>成功</td></tr>
+    <tr><td>1001</td><td>设备未激活</td></tr>
+    <tr><td>1002</td><td>设备已被锁定</td></tr>
+    <tr><td>1003</td><td>设备已被失效</td></tr>
+    <tr><td>2001</td><td>指令参数缺失或格式错误</td></tr>
+    <tr><td>2002</td><td>不支持的指令类型</td></tr>
+    <tr><td>2003</td><td>参数值超出允许范围</td></tr>
+    <tr><td>2004</td><td>固件版本不兼容</td></tr>
+    <tr><td>3001</td><td>设备忙，无法执行指令</td></tr>
+    <tr><td>3002</td><td>硬件故障，无法执行</td></tr>
+    <tr><td>3003</td><td>通信模块异常</td></tr>
+    <tr><td>4001</td><td>OTA固件下载失败</td></tr>
+    <tr><td>4002</td><td>OTA固件MD5校验失败</td></tr>
+    <tr><td>4003</td><td>OTA固件写入失败</td></tr>
+    <tr><td>4004</td><td>OTA升级超时</td></tr>
+    <tr><td>5001</td><td>存储空间不足</td></tr>
+    <tr><td>5002</td><td>系统内部错误</td></tr>
+    <tr><td>9999</td><td>未知错误</td></tr>
+  </table>
+</div>
+
+<!-- ====== 8. 告警/故障码 ====== -->
+<h2 id="s8">8. 告警/故障码定义</h2>
+<div class="card">
+  <h3>8.1 电压类告警</h3>
+  <table>
+    <tr><th>告警码</th><th>告警类型</th><th>级别</th><th>说明</th></tr>
+    <tr><td>101</td><td>单体过压告警</td><td><span class="tag tag-up">warning</span></td><td>某串电池电压超过过压阈值</td></tr>
+    <tr><td>102</td><td>单体过压保护</td><td><span class="tag tag-down">fault</span></td><td>某串电池电压超过保护值，触发保护</td></tr>
+    <tr><td>103</td><td>单体低压告警</td><td><span class="tag tag-up">warning</span></td><td>某串电池电压低于低压阈值</td></tr>
+    <tr><td>104</td><td>单体低压保护</td><td><span class="tag tag-down">fault</span></td><td>某串电池电压低于保护值，触发保护</td></tr>
+    <tr><td>107</td><td>总电压过压告警</td><td><span class="tag tag-up">warning</span></td><td>电池总电压超过阈值</td></tr>
+    <tr><td>108</td><td>总电压低压告警</td><td><span class="tag tag-up">warning</span></td><td>电池总电压低于阈值</td></tr>
+    <tr><td>109</td><td>压差过大告警</td><td><span class="tag tag-up">warning</span></td><td>最高与最低单体电压差超过阈值</td></tr>
+  </table>
+  <h3>8.2 电流类告警</h3>
+  <table>
+    <tr><th>告警码</th><th>告警类型</th><th>级别</th><th>说明</th></tr>
+    <tr><td>104</td><td>充电过流告警</td><td><span class="tag tag-up">warning</span></td><td>充电电流超过阈值</td></tr>
+    <tr><td>105</td><td>限流故障</td><td><span class="tag tag-down">fault</span></td><td>限流保护触发</td></tr>
+    <tr><td>106</td><td>放电过流告警</td><td><span class="tag tag-up">warning</span></td><td>放电电流超过阈值</td></tr>
+    <tr><td>110</td><td>短路保护</td><td><span class="tag tag-down">fault</span></td><td>检测到短路，立即切断</td></tr>
+  </table>
+  <h3>8.3 温度类告警</h3>
+  <table>
+    <tr><th>告警码</th><th>告警类型</th><th>级别</th><th>说明</th></tr>
+    <tr><td>201</td><td>充电机高温故障</td><td><span class="tag tag-down">fault</span></td><td>充电机温度超过阈值</td></tr>
+    <tr><td>202</td><td>电池高温告警</td><td><span class="tag tag-up">warning</span></td><td>电池温度超过阈值</td></tr>
+    <tr><td>203</td><td>电池低温告警</td><td><span class="tag tag-up">warning</span></td><td>电池温度低于阈值</td></tr>
+    <tr><td>204</td><td>MOS高温告警</td><td><span class="tag tag-up">warning</span></td><td>MOS管温度超过阈值</td></tr>
+    <tr><td>205</td><td>热敏电阻故障</td><td><span class="tag tag-down">fault</span></td><td>温度传感器异常</td></tr>
+    <tr><td>206</td><td>电池温差过大</td><td><span class="tag tag-up">warning</span></td><td>电池间温差超过阈值</td></tr>
+  </table>
+  <h3>8.4 SOC/SOH类告警</h3>
+  <table>
+    <tr><th>告警码</th><th>告警类型</th><th>级别</th><th>说明</th></tr>
+    <tr><td>301</td><td>SOC低电告警</td><td><span class="tag tag-up">warning</span></td><td>SOC低于告警阈值</td></tr>
+    <tr><td>302</td><td>SOC极低保护</td><td><span class="tag tag-down">fault</span></td><td>SOC低于保护阈值</td></tr>
+    <tr><td>303</td><td>SOH低告警</td><td><span class="tag tag-up">warning</span></td><td>电池健康度低于阈值</td></tr>
+    <tr><td>304</td><td>循环次数告警</td><td><span class="tag tag-up">warning</span></td><td>循环次数超过告警阈值</td></tr>
+  </table>
+  <h3>8.5 通信类故障</h3>
+  <table>
+    <tr><th>告警码</th><th>告警类型</th><th>级别</th><th>说明</th></tr>
+    <tr><td>401</td><td>CAN发送故障</td><td><span class="tag tag-down">fault</span></td><td>CAN总线通信异常</td></tr>
+    <tr><td>402</td><td>RS485通信故障</td><td><span class="tag tag-down">fault</span></td><td>RS485通信异常</td></tr>
+    <tr><td>403</td><td>蓝牙通信故障</td><td><span class="tag tag-up">warning</span></td><td>蓝牙模块异常</td></tr>
+    <tr><td>404</td><td>MQTT连接断开</td><td><span class="tag tag-down">fault</span></td><td>设备与平台连接断开</td></tr>
+  </table>
+  <h3>8.6 硬件类故障</h3>
+  <table>
+    <tr><th>告警码</th><th>告警类型</th><th>级别</th><th>说明</th></tr>
+    <tr><td>501</td><td>MOS管损坏</td><td><span class="tag tag-down">fault</span></td><td>MOS管检测异常</td></tr>
+    <tr><td>502</td><td>充电机故障</td><td><span class="tag tag-down">fault</span></td><td>充电机硬件异常</td></tr>
+    <tr><td>503</td><td>电压采样异常</td><td><span class="tag tag-down">fault</span></td><td>电压采集电路故障</td></tr>
+    <tr><td>504</td><td>电流采样异常</td><td><span class="tag tag-down">fault</span></td><td>电流采集电路故障</td></tr>
+    <tr><td>505</td><td>GPS模块异常</td><td><span class="tag tag-up">warning</span></td><td>GPS定位模块故障</td></tr>
+  </table>
+</div>
+
+<!-- ====== 9. 枚举值 ====== -->
+<h2 id="s9">9. 枚举值定义</h2>
+<div class="card">
+  <h3>9.1 设备状态 (deviceStatus)</h3>
+  <table>
+    <tr><th>值</th><th>说明</th></tr>
+    <tr><td>online</td><td>在线，正常通信中</td></tr>
+    <tr><td>offline</td><td>离线，心跳超时</td></tr>
+    <tr><td>working</td><td>工作中，正在充放电</td></tr>
+    <tr><td>inactive</td><td>未激活，尚未注册</td></tr>
+    <tr><td>locked</td><td>已锁定，被平台远程锁定</td></tr>
+    <tr><td>failed</td><td>已失效，设备已报废</td></tr>
+  </table>
+  <h3>9.2 保护状态位 (protectionStatus)</h3>
+  <p>32位整数，各bit位含义：</p>
+  <table>
+    <tr><th>Bit位</th><th>说明</th><th>1=触发</th></tr>
+    <tr><td>bit0</td><td>充电过压保护</td><td>触发充电过压保护</td></tr>
+    <tr><td>bit1</td><td>放电低压保护</td><td>触发放电低压保护</td></tr>
+    <tr><td>bit2</td><td>充电过流保护</td><td>触发充电过流保护</td></tr>
+    <tr><td>bit3</td><td>放电过流保护</td><td>触发放电过流保护</td></tr>
+    <tr><td>bit4</td><td>短路保护</td><td>触发短路保护</td></tr>
+    <tr><td>bit5</td><td>电池高温保护</td><td>触发高温保护</td></tr>
+    <tr><td>bit6</td><td>电池低温保护</td><td>触发低温保护</td></tr>
+    <tr><td>bit7</td><td>MOS高温保护</td><td>触发MOS高温保护</td></tr>
+    <tr><td>bit8</td><td>充电机高温保护</td><td>触发充电机高温保护</td></tr>
+    <tr><td>bit9</td><td>SOC极低保护</td><td>触发SOC极低保护</td></tr>
+    <tr><td>bit10</td><td>压差过大保护</td><td>触发压差保护</td></tr>
+    <tr><td>bit11~31</td><td>预留</td><td>保留位，默认0</td></tr>
+  </table>
+  <div class="note">protectionStatus = 0 表示无任何保护触发；非0值需对应bit位解析。</div>
+  <h3>9.3 系统故障位 (systemFault)</h3>
+  <table>
+    <tr><th>Bit位</th><th>说明</th></tr>
+    <tr><td>bit0</td><td>CAN通信故障</td></tr>
+    <tr><td>bit1</td><td>RS485通信故障</td></tr>
+    <tr><td>bit2</td><td>热敏电阻故障</td></tr>
+    <tr><td>bit3</td><td>电压采样异常</td></tr>
+    <tr><td>bit4</td><td>电流采样异常</td></tr>
+    <tr><td>bit5</td><td>MOS管损坏</td></tr>
+    <tr><td>bit6</td><td>充电机硬件故障</td></tr>
+    <tr><td>bit7</td><td>GPS模块异常</td></tr>
+    <tr><td>bit8~31</td><td>预留</td></tr>
+  </table>
+  <h3>9.4 告警级别 (alarmLevel)</h3>
+  <table>
+    <tr><th>值</th><th>说明</th><th>处理方式</th></tr>
+    <tr><td>warning</td><td>警告</td><td>记录并通知，不触发保护</td></tr>
+    <tr><td>fault</td><td>故障</td><td>触发保护动作，需人工或远程消除</td></tr>
+    <tr><td>critical</td><td>严重</td><td>立即切断，推送紧急通知</td></tr>
+  </table>
+  <h3>9.5 电池类型 (batteryType)</h3>
+  <table>
+    <tr><th>值</th><th>说明</th></tr>
+    <tr><td>磷酸铁锂</td><td>LiFePO4电池</td></tr>
+    <tr><td>三元锂</td><td>NCM/NCA电池</td></tr>
+    <tr><td>钛酸锂</td><td>LTO电池</td></tr>
+    <tr><td>铅酸</td><td>铅酸电池（铅改锂场景）</td></tr>
+  </table>
+  <h3>9.6 OTA升级状态 (otaStatus)</h3>
+  <table>
+    <tr><th>值</th><th>说明</th></tr>
+    <tr><td>downloading</td><td>固件下载中</td></tr>
+    <tr><td>installing</td><td>固件安装中</td></tr>
+    <tr><td>success</td><td>升级成功</td></tr>
+    <tr><td>failed</td><td>升级失败</td></tr>
+    <tr><td>rollback</td><td>升级失败已回滚</td></tr>
+  </table>
+</div>
+
+<!-- ====== 10. 附录 ====== -->
+<h2 id="s10">10. 附录</h2>
+<div class="card">
+  <h3>10.1 数据类型与单位说明</h3>
+  <table>
+    <tr><th>类型</th><th>说明</th></tr>
+    <tr><td>String</td><td>UTF-8字符串</td></tr>
+    <tr><td>Integer</td><td>32位整数</td></tr>
+    <tr><td>Float</td><td>32位浮点数，保留1-2位小数</td></tr>
+    <tr><td>Double</td><td>64位浮点数，用于经纬度</td></tr>
+    <tr><td>Boolean</td><td>布尔值，true/false</td></tr>
+    <tr><td>Object</td><td>JSON对象</td></tr>
+    <tr><td>Array</td><td>JSON数组</td></tr>
+  </table>
+  <h3>10.2 时间格式</h3>
+  <p>所有时间字段统一使用ISO 8601格式：<code>yyyy-MM-ddTHH:mm:ssZ</code></p>
+  <p>时区：UTC（设备端使用UTC时间上报，平台端转换为本地时区+8展示）</p>
+  <p>示例：<code>2026-09-18T08:30:00Z</code></p>
+  <h3>10.3 消息去重</h3>
+  <p>每个消息携带 <code>msgId</code>（UUID格式），平台端维护最近5分钟的消息ID缓存，重复 <code>msgId</code> 的消息将被丢弃。</p>
+  <h3>10.4 消息大小限制</h3>
+  <p>单条MQTT消息Payload不超过 <strong>16KB</strong>。单体电压数据如串数超过48串，需拆分多条消息上报。</p>
+  <h3>10.5 连接重试策略</h3>
+  <table>
+    <tr><th>重试次数</th><th>等待时间</th><th>说明</th></tr>
+    <tr><td>第1次</td><td>5秒</td><td>立即重连</td></tr>
+    <tr><td>第2次</td><td>10秒</td><td>-</td></tr>
+    <tr><td>第3次</td><td>30秒</td><td>-</td></tr>
+    <tr><td>第4次</td><td>60秒</td><td>-</td></tr>
+    <tr><td>第5次及以后</td><td>300秒</td><td>持续重试，直到连接成功</td></tr>
+  </table>
+  <h3>10.6 Topic订阅清单</h3>
+  <p>设备端连接成功后需订阅以下Topic接收平台指令：</p>
+  <table>
+    <tr><th>Topic</th><th>说明</th></tr>
+    <tr><td>bms/device/{imei}/cmd/#</td><td>通配订阅所有下行指令</td></tr>
+  </table>
+  <p>平台端需订阅以下Topic接收设备上报：</p>
+  <table>
+    <tr><th>Topic</th><th>说明</th></tr>
+    <tr><td>bms/device/+/register</td><td>所有设备注册消息</td></tr>
+    <tr><td>bms/device/+/heartbeat</td><td>所有设备心跳</td></tr>
+    <tr><td>bms/device/+/status</td><td>所有设备状态变更</td></tr>
+    <tr><td>bms/device/+/data</td><td>所有电池数据</td></tr>
+    <tr><td>bms/device/+/switch</td><td>所有开关状态</td></tr>
+    <tr><td>bms/device/+/voltage</td><td>所有单体电压</td></tr>
+    <tr><td>bms/device/+/gps</td><td>所有GPS定位</td></tr>
+    <tr><td>bms/device/+/alarm</td><td>所有告警/故障</td></tr>
+    <tr><td>bms/device/+/ota/status</td><td>所有OTA状态</td></tr>
+    <tr><td>bms/device/+/resp</td><td>所有指令响应</td></tr>
+  </table>
+</div>
+
+<div class="card" style="text-align:center;margin-top:32px;color:var(--text2);">
+  <p>BMS管理系统 MQTT接口协议 V1.0 | 文档日期：2026-09-18</p>
+  <p>本协议由BMS管理平台团队编写，设备端开发请严格按照本协议实现MQTT通信。</p>
+</div>
+
+</div>
+</body>
+</html>
