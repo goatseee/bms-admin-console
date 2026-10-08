@@ -3,995 +3,2138 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BMS管理系统 - MQTT接口协议文档</title>
+<title>BMS管理系统 — MQTT接口协议文档（EMQX 5.7.2 + MQTT 5.0）</title>
 <style>
-:root { --primary:#1A5276; --primary-light:#2E86C1; --bg:#F8F9FA; --card:#fff; --border:#E4E7ED; --text:#303133; --text2:#909399; --success:#67C23A; --warning:#E6A23C; --danger:#F56C6C; --code-bg:#1E1E2E; --code-text:#CDD6F4; }
+:root {
+  --primary:#1A5276; --primary-light:#2E86C1; --primary-dark:#0E3A5C;
+  --sidebar-bg:#16324F; --sidebar-link:#C8D3DF; --sidebar-hover:#2E86C1; --sidebar-active:#0E3A5C;
+  --bg:#F4F6F9; --card:#fff; --border:#E4E7ED; --text:#303133; --text2:#909399;
+  --success:#18A058; --warning:#E6A23C; --danger:#F56C6C;
+  --code-bg:#1E1E2E; --code-text:#CDD6F4; --code-border:#313244;
+}
 * { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
 body { font-family:'Microsoft YaHei','Segoe UI',sans-serif; background:var(--bg); color:var(--text); line-height:1.7; font-size:14px; }
-.container { max-width:1100px; margin:0 auto; padding:24px; }
-h1 { font-size:28px; color:var(--primary); margin-bottom:8px; }
-h2 { font-size:22px; color:var(--primary); margin:32px 0 12px; padding-bottom:8px; border-bottom:2px solid var(--primary-light); }
-h3 { font-size:17px; color:var(--primary-dark); margin:24px 0 8px; }
-h4 { font-size:15px; color:var(--text); margin:16px 0 8px; }
+a { text-decoration:none; color:inherit; }
+ul { list-style:none; }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-thumb { background:#C0C4CC; border-radius:3px; }
+::-webkit-scrollbar-track { background:transparent; }
+
+/* ===== 布局 ===== */
+.app { display:flex; min-height:100vh; }
+.sidebar { width:232px; background:linear-gradient(180deg,#1A3C5E 0%,var(--sidebar-bg) 100%); flex-shrink:0; position:fixed; top:0; left:0; bottom:0; z-index:200; display:flex; flex-direction:column; box-shadow:2px 0 8px rgba(0,0,0,0.15); }
+.sidebar-logo { height:54px; display:flex; align-items:center; gap:8px; padding:0 14px; background:var(--primary-dark); border-bottom:1px solid rgba(255,255,255,0.08); }
+.sidebar-logo .logo-icon { width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,#2E86C1,#F39C12); color:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:bold; }
+.sidebar-logo .logo-text { color:#fff; font-size:14px; font-weight:600; line-height:1.3; }
+.sidebar-logo .logo-text small { display:block; font-size:10px; font-weight:400; opacity:0.65; }
+.sidebar-nav { flex:1; overflow-y:auto; padding:8px 0 20px; }
+.sidebar-nav a { display:block; padding:7px 16px; color:#C8D3DF; font-size:13px; cursor:pointer; border-left:3px solid transparent; transition:all .15s; }
+.sidebar-nav a:hover { background:rgba(46,134,193,0.18); color:#fff; }
+.sidebar-nav a.active { background:var(--sidebar-active); color:#fff; border-left-color:var(--primary-light); }
+.sidebar-nav a.sub { padding-left:34px; font-size:12px; color:#9FB3C8; }
+.sidebar-nav a.sub:hover { color:#fff; }
+.sidebar-nav a.sub.active { color:#fff; }
+.sidebar-nav .group-title { padding:12px 16px 4px; font-size:11px; color:#7A93AC; text-transform:uppercase; letter-spacing:1px; }
+.main { flex:1; margin-left:232px; display:flex; flex-direction:column; min-height:100vh; }
+.topbar { height:48px; background:#fff; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 18px; gap:12px; position:sticky; top:0; z-index:100; box-shadow:0 1px 3px rgba(0,0,0,0.05); }
+.topbar .breadcrumb { color:var(--text2); font-size:13px; display:flex; align-items:center; gap:6px; }
+.topbar .breadcrumb .sep { color:#C0C4CC; }
+.topbar .doc-title { color:var(--primary); font-weight:600; font-size:14px; }
+.topbar .spacer { flex:1; }
+.topbar .version { background:var(--primary); color:#fff; padding:3px 10px; border-radius:12px; font-size:11px; }
+.menu-btn { display:none; width:32px; height:32px; border:none; border-radius:4px; background:var(--primary); color:#fff; font-size:15px; cursor:pointer; }
+.container { max-width:1100px; width:100%; margin:0 auto; padding:22px 28px 60px; }
+h1 { font-size:26px; color:var(--primary); margin-bottom:6px; }
+h2 { font-size:21px; color:var(--primary); margin:40px 0 14px; padding-bottom:8px; border-bottom:2px solid var(--primary-light); }
+h3 { font-size:16px; color:var(--primary-dark); margin:26px 0 10px; }
+h4 { font-size:14px; color:var(--text); margin:16px 0 8px; }
 p { margin-bottom:8px; }
-.subtitle { color:var(--text2); font-size:13px; margin-bottom:24px; }
-.card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
-.card-title { font-weight:600; color:var(--primary); margin-bottom:8px; font-size:15px; }
-table { width:100%; border-collapse:collapse; margin:8px 0; font-size:13px; }
-th { background:#F5F7FA; padding:8px 12px; text-align:left; font-weight:600; color:var(--text2); border:1px solid var(--border); white-space:nowrap; }
-td { padding:8px 12px; border:1px solid var(--border); }
-tr:nth-child(even) td { background:#FAFBFC; }
-code { background:#F0F2F5; padding:2px 6px; border-radius:3px; font-family:Consolas,monospace; font-size:12px; color:var(--primary); }
-pre { background:var(--code-bg); color:var(--code-text); padding:16px; border-radius:8px; overflow-x:auto; font-family:Consolas,monospace; font-size:12px; line-height:1.5; margin:8px 0; }
+.subtitle { color:var(--text2); font-size:13px; margin-bottom:20px; }
+.hero { background:linear-gradient(135deg,#1A5276 0%,#2E86C1 100%); border-radius:10px; padding:22px 26px; color:#fff; margin-bottom:20px; }
+.hero h1 { color:#fff; font-size:24px; border:none; margin:0 0 6px; }
+.hero .sub { opacity:0.85; font-size:13px; }
+.hero .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.hero .meta span { background:rgba(255,255,255,0.18); padding:3px 12px; border-radius:12px; font-size:11px; }
+
+/* ===== 卡片 ===== */
+.card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px 20px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.05); }
+.card-title { font-weight:600; color:var(--primary); margin-bottom:8px; font-size:15px; display:flex; align-items:center; gap:8px; }
+.card-title .tag { margin-left:0; }
+
+/* ===== 表格 ===== */
+.table-wrap { overflow-x:auto; margin:8px 0 14px; border:1px solid var(--border); border-radius:6px; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th { background:var(--primary); color:#fff; padding:8px 12px; text-align:left; font-weight:600; border:1px solid var(--primary); white-space:nowrap; }
+td { padding:8px 12px; border:1px solid var(--border); vertical-align:top; }
+tr:nth-child(even) td { background:#F4F8FB; }
+tr:hover td { background:#EAF2F9; }
+.field-table td:first-child { white-space:nowrap; color:var(--primary); font-weight:500; }
+.field-table .req { color:var(--danger); }
+.field-table .opt { color:var(--text2); }
+
+/* ===== 代码 ===== */
+code { background:#EFF3F6; padding:2px 6px; border-radius:3px; font-family:Consolas,'Courier New',monospace; font-size:12px; color:var(--primary); }
+pre { background:var(--code-bg); color:var(--code-text); padding:16px 18px; border-radius:8px; overflow-x:auto; font-family:Consolas,'Courier New',monospace; font-size:12px; line-height:1.6; margin:10px 0; border:1px solid var(--code-border); }
 pre .key { color:#89B4FA; }
 pre .str { color:#A6E3A1; }
 pre .num { color:#FAB387; }
 pre .com { color:#6C7086; font-style:italic; }
-.tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:500; }
+pre .kw { color:#C792EA; font-weight:600; }
+pre.ascii { color:#A6E3A1; font-size:12px; line-height:1.5; }
+
+/* ===== 标签 ===== */
+.tag { display:inline-block; padding:2px 9px; border-radius:4px; font-size:11px; font-weight:500; white-space:nowrap; }
 .tag-up { background:#E8F8F0; color:var(--success); border:1px solid #B7EB8F; }
 .tag-down { background:#FDF6EC; color:var(--warning); border:1px solid #F5DAB1; }
 .tag-req { background:#ECF5FF; color:var(--primary-light); border:1px solid #B3D8FF; }
-.note { background:#ECF5FF; border-left:3px solid var(--primary-light); padding:8px 16px; margin:8px 0; border-radius:0 4px 4px 0; font-size:13px; }
-.warn { background:#FDF6EC; border-left:3px solid var(--warning); padding:8px 16px; margin:8px 0; border-radius:0 4px 4px 0; font-size:13px; }
-.toc { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px 24px; margin-bottom:24px; }
-.toc h3 { margin-top:0; }
-.toc ul { list-style:none; padding-left:16px; }
-.toc li { padding:3px 0; }
-.toc a { color:var(--primary-light); text-decoration:none; }
-.toc a:hover { text-decoration:underline; }
-.badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:11px; background:var(--primary); color:#fff; margin-left:8px; }
-.field-table td:first-child { white-space:nowrap; color:var(--primary); font-weight:500; }
-.field-table .req { color:var(--danger); }
-.field-table .opt { color:var(--text2); }
-hr { border:none; border-top:1px solid var(--border); margin:24px 0; }
+.tag-mqtt { background:#F0EAF7; color:#8E44AD; border:1px solid #D7BBE5; }
+.tag-gray { background:#F4F4F5; color:#606266; border:1px solid #D3D4D6; }
+.tag-green { background:#E8F8F0; color:var(--success); border:1px solid #B7EB8F; }
+.tag-orange { background:#FDF6EC; color:var(--warning); border:1px solid #F5DAB1; }
+.tag-red { background:#FDECEC; color:var(--danger); border:1px solid #FBC4C4; }
+.tag-blue { background:#ECF5FF; color:var(--primary-light); border:1px solid #B3D8FF; }
+
+/* ===== 提示块 ===== */
+.note { background:#ECF5FF; border-left:3px solid var(--primary-light); padding:8px 16px; margin:10px 0; border-radius:0 4px 4px 0; font-size:13px; }
+.warn { background:#FDF6EC; border-left:3px solid var(--warning); padding:8px 16px; margin:10px 0; border-radius:0 4px 4px 0; font-size:13px; }
+.danger { background:#FDECEC; border-left:3px solid var(--danger); padding:8px 16px; margin:10px 0; border-radius:0 4px 4px 0; font-size:13px; }
+
+/* ===== 消息属性头 ===== */
+.msg-head { background:#F7FAFC; border:1px solid var(--border); border-left:4px solid var(--primary-light); border-radius:6px; padding:10px 16px; margin:10px 0; font-size:12px; line-height:1.9; }
+.msg-head b { color:var(--primary); }
+.msg-head .kv { margin-right:18px; white-space:nowrap; }
+.msg-head .up { color:var(--success); font-weight:600; }
+.msg-head .down { color:var(--warning); font-weight:600; }
+.msg-head .tp { display:inline-block; background:#EDF1F7; color:var(--primary); padding:1px 7px; border-radius:3px; margin:2px 4px 2px 0; font-family:Consolas,monospace; font-size:11px; }
+.msg-head .kv { margin:2px 0; }
+.flow { background:#F7FAFC; border:1px dashed var(--border); border-radius:6px; padding:14px 18px; margin:10px 0; font-family:Consolas,monospace; font-size:12px; line-height:2; color:var(--text); }
+.flow .arrow { color:var(--primary-light); }
+.flow .pkt { background:var(--primary); color:#fff; padding:2px 10px; border-radius:4px; font-size:11px; }
+
+/* ===== 目录 ===== */
+ol.toc-list { padding-left:22px; margin:8px 0; }
+ol.toc-list li { padding:2px 0; }
+ol.toc-list a { color:var(--primary-light); }
+ol.toc-list a:hover { text-decoration:underline; }
+
+/* ===== 页脚 ===== */
+.footer { text-align:center; color:var(--text2); font-size:12px; padding:24px 0 10px; border-top:1px solid var(--border); margin-top:40px; }
+
+/* ===== 响应式 ===== */
+@media (max-width:960px) {
+  .sidebar { transform:translateX(-100%); transition:transform .25s; width:240px; }
+  .sidebar.open { transform:none; box-shadow:4px 0 16px rgba(0,0,0,0.25); }
+  .main { margin-left:0; }
+  .menu-btn { display:block; }
+  .container { padding:14px 14px 30px; }
+  .hero h1 { font-size:20px; }
+}
 </style>
 </head>
 <body>
-<div class="container">
-<h1>BMS管理系统 — MQTT接口协议文档 <span class="badge">V1.0</span></h1>
-<div class="subtitle">文档版本：V1.0 | 更新日期：2026-09-18 | 适用范围：BMS设备端 ↔ 管理平台</div>
+<div class="app">
+  <!-- ================= 左侧目录导航 ================= -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">BMS</div>
+      <div class="logo-text">BMS协议文档<small>EMQX 5.7.2 · MQTT 5.0</small></div>
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav">
+      <a href="#s1" data-target="s1">1. 概述</a>
+      <a href="#s1-2" class="sub" data-target="s1-2">1.2 系统架构</a>
+      <a href="#s1-3" class="sub" data-target="s1-3">1.3 MQTT 5.0 特点</a>
+      <a href="#s2" data-target="s2">2. EMQX Broker 部署规范</a>
+      <a href="#s2-2" class="sub" data-target="s2-2">2.2 监听器配置</a>
+      <a href="#s2-3" class="sub" data-target="s2-3">2.3 集群模式</a>
+      <a href="#s2-4" class="sub" data-target="s2-4">2.4 会话持久化</a>
+      <a href="#s3" data-target="s3">3. MQTT 5.0 连接规范</a>
+      <a href="#s3-2" class="sub" data-target="s3-2">3.2 CONNECT 属性</a>
+      <a href="#s3-3" class="sub" data-target="s3-3">3.3 CONNACK 属性</a>
+      <a href="#s3-4" class="sub" data-target="s3-4">3.4 认证方式</a>
+      <a href="#s3-6" class="sub" data-target="s3-6">3.6 连接保护</a>
+      <a href="#s4" data-target="s4">4. Topic 命名规范</a>
+      <a href="#s4-3" class="sub" data-target="s4-3">4.3 共享订阅</a>
+      <a href="#s4-4" class="sub" data-target="s4-4">4.4 主题重写</a>
+      <a href="#s4-5" class="sub" data-target="s4-5">4.5 自动订阅</a>
+      <a href="#s4-6" class="sub" data-target="s4-6">4.6 特有Topic特性</a>
+      <a href="#s5" data-target="s5">5. MQTT 5.0 消息属性</a>
+      <a href="#s5-6" class="sub" data-target="s5-6">5.6 QoS 流程</a>
+      <a href="#s5-7" class="sub" data-target="s5-7">5.7 Reason Code</a>
+      <a href="#s5-8" class="sub" data-target="s5-8">5.8 请求-响应模式</a>
+      <a href="#s6" data-target="s6">6. 上行消息（设备→平台）</a>
+      <a href="#s6-1" class="sub" data-target="s6-1">6.1 设备注册</a>
+      <a href="#s6-2" class="sub" data-target="s6-2">6.2 心跳上报</a>
+      <a href="#s6-3" class="sub" data-target="s6-3">6.3 电池实时数据</a>
+      <a href="#s6-4" class="sub" data-target="s6-4">6.4 开关状态</a>
+      <a href="#s6-5" class="sub" data-target="s6-5">6.5 单体电压</a>
+      <a href="#s6-6" class="sub" data-target="s6-6">6.6 GPS定位</a>
+      <a href="#s6-7" class="sub" data-target="s6-7">6.7 告警上报</a>
+      <a href="#s6-8" class="sub" data-target="s6-8">6.8 OTA状态</a>
+      <a href="#s7" data-target="s7">7. 下行消息（平台→设备）</a>
+      <a href="#s7-1" class="sub" data-target="s7-1">7.1 锁定/解锁</a>
+      <a href="#s7-2" class="sub" data-target="s7-2">7.2 设备重启</a>
+      <a href="#s7-3" class="sub" data-target="s7-3">7.3 休眠/唤醒</a>
+      <a href="#s7-4" class="sub" data-target="s7-4">7.4 GPS重启</a>
+      <a href="#s7-5" class="sub" data-target="s7-5">7.5 参数配置</a>
+      <a href="#s7-6" class="sub" data-target="s7-6">7.6 故障消除</a>
+      <a href="#s7-7" class="sub" data-target="s7-7">7.7 OTA升级</a>
+      <a href="#s7-8" class="sub" data-target="s7-8">7.8 同步数据</a>
+      <a href="#s8" data-target="s8">8. EMQX 规则引擎</a>
+      <a href="#s8-2" class="sub" data-target="s8-2">8.2 事件类型</a>
+      <a href="#s8-3" class="sub" data-target="s8-3">8.3 SQL 语法</a>
+      <a href="#s8-4" class="sub" data-target="s8-4">8.4 规则示例</a>
+      <a href="#s9" data-target="s9">9. EMQX 数据集成方案</a>
+      <a href="#s10" data-target="s10">10. 响应码与 Reason Code</a>
+      <a href="#s11" data-target="s11">11. 告警/故障码定义</a>
+      <a href="#s12" data-target="s12">12. 附录</a>
+      <a href="#s12-2" class="sub" data-target="s12-2">12.2 系统主题</a>
+      <a href="#s12-3" class="sub" data-target="s12-3">12.3 ACL 授权</a>
+      <a href="#s12-4" class="sub" data-target="s12-4">12.4 Schema Registry</a>
+    </nav>
+  </aside>
 
-<div class="toc">
-<h3>目录</h3>
-<ul>
-  <li><a href="#s1">1. 概述</a></li>
-  <li><a href="#s2">2. 连接规范</a></li>
-  <li><a href="#s3">3. Topic命名规范</a></li>
-  <li><a href="#s4">4. 公共数据结构</a></li>
-  <li><a href="#s5">5. 上行消息（设备→平台）</a>
-    <ul>
-      <li><a href="#s5-1">5.1 设备注册</a></li>
-      <li><a href="#s5-2">5.2 心跳上报</a></li>
-      <li><a href="#s5-3">5.3 电池实时数据上报</a></li>
-      <li><a href="#s5-4">5.4 开关状态上报</a></li>
-      <li><a href="#s5-5">5.5 单体电压上报</a></li>
-      <li><a href="#s5-6">5.6 GPS定位上报</a></li>
-      <li><a href="#s5-7">5.7 告警/故障上报</a></li>
-      <li><a href="#s5-8">5.8 OTA升级状态上报</a></li>
-    </ul>
-  </li>
-  <li><a href="#s6">6. 下行消息（平台→设备）</a>
-    <ul>
-      <li><a href="#s6-1">6.1 设备锁定/解锁</a></li>
-      <li><a href="#s6-2">6.2 设备重启</a></li>
-      <li><a href="#s6-3">6.3 设备休眠/唤醒</a></li>
-      <li><a href="#s6-4">6.4 GPS模块重启</a></li>
-      <li><a href="#s6-5">6.5 参数配置下发</a></li>
-      <li><a href="#s6-6">6.6 故障消除</a></li>
-      <li><a href="#s6-7">6.7 OTA升级指令</a></li>
-      <li><a href="#s6-8">6.8 同步数据请求</a></li>
-    </ul>
-  </li>
-  <li><a href="#s7">7. 响应码定义</a></li>
-  <li><a href="#s8">8. 告警/故障码定义</a></li>
-  <li><a href="#s9">9. 枚举值定义</a></li>
-  <li><a href="#s10">10. 附录</a></li>
-</ul>
-</div>
+  <!-- ================= 主内容 ================= -->
+  <main class="main">
+    <div class="topbar">
+      <button class="menu-btn" id="menuBtn">☰</button>
+      <div class="breadcrumb"><span>BMS管理系统</span><span class="sep">/</span><span class="doc-title">MQTT接口协议文档</span></div>
+      <div class="spacer"></div>
+      <span class="version">V2.0</span>
+    </div>
+    <div class="container">
 
-<!-- ====== 1. 概述 ====== -->
-<h2 id="s1">1. 概述</h2>
-<div class="card">
-  <p>本协议定义了BMS（电池管理系统）设备端与管理平台之间的MQTT通信接口。设备端通过MQTT协议向平台上报电池实时数据、开关状态、电压信息、GPS定位、告警故障等信息；平台通过MQTT协议向设备下发控制指令，包括设备锁定/解锁、重启、休眠/唤醒、参数配置、故障消除、OTA升级等操作。</p>
-  <h4>通信架构</h4>
-  <pre><span class="com">┌─────────────┐     MQTT      ┌─────────────────┐     HTTP/WS    ┌──────────────┐</span>
-<span class="com">│  BMS设备端   │ ──────────→  │  MQTT Broker    │ ──────────→   │  管理平台后端  │</span>
-<span class="com">│ (硬件板子)   │ ←──────────  │  (消息中间件)    │ ←──────────   │  (BMS系统)    │</span>
-<span class="com">└─────────────┘   上行/下行    └─────────────────┘    订阅/推送    └──────────────┘</span></pre>
-  <h4>协议特点</h4>
-  <ul style="padding-left:20px;">
-    <li>基于MQTT 3.1.1协议，支持QoS 0/1/2</li>
-    <li>消息格式：JSON</li>
-    <li>编码方式：UTF-8</li>
-    <li>支持遗嘱消息（LWT）实现离线检测</li>
-    <li>支持Retained Message实现设备状态保持</li>
-  </ul>
-</div>
+      <div class="hero">
+        <h1>BMS管理系统 — MQTT接口协议文档</h1>
+        <div class="sub">基于 EMQX 5.7.2 Broker + MQTT 5.0 协议标准，定义 BMS 设备端与平台端的完整通信协议</div>
+        <div class="meta">
+          <span>协议版本 V2.0</span>
+          <span>更新日期 2026-10-08</span>
+          <span>适用对象 设备端固件 / 平台服务端</span>
+          <span>消息格式 JSON（UTF-8）</span>
+        </div>
+      </div>
 
-<!-- ====== 2. 连接规范 ====== -->
-<h2 id="s2">2. 连接规范</h2>
-<div class="card">
-  <h3>2.1 Broker连接参数</h3>
-  <table>
-    <tr><th>参数</th><th>说明</th><th>示例值</th></tr>
-    <tr><td>Broker地址</td><td>MQTT服务器地址</td><td>mqtt://broker.bms-system.com</td></tr>
-    <tr><td>TCP端口</td><td>非加密连接端口</td><td>1883</td></tr>
-    <tr><td>SSL/TLS端口</td><td>加密连接端口（推荐）</td><td>8883</td></tr>
-    <tr><td>WebSocket端口</td><td>WebSocket连接端口</td><td>8084</td></tr>
-    <tr><td>心跳间隔</td><td>Keep Alive间隔（秒）</td><td>60</td></tr>
-    <tr><td>连接超时</td><td>连接超时时间（秒）</td><td>15</td></tr>
-  </table>
-  <h3>2.2 Client ID规则</h3>
-  <p>Client ID格式：<code>bms_device_{IMEI}</code></p>
-  <p>示例：<code>bms_device_864114070050327</code></p>
-  <div class="warn">注意：Client ID必须全局唯一，使用设备IMEI号确保唯一性。同一IMEI不允许同时建立多个连接。</div>
-  <h3>2.3 认证方式</h3>
-  <table>
-    <tr><th>参数</th><th>说明</th></tr>
-    <tr><td>用户名</td><td>设备IMEI号</td></tr>
-    <tr><td>密码</td><td>设备出厂时预置的Token（AES加密）</td></tr>
-  </table>
-  <h3>2.4 遗嘱消息（LWT）</h3>
-  <p>设备连接时设置遗嘱消息，当设备异常断线时Broker自动发布离线通知：</p>
-  <table>
-    <tr><th>参数</th><th>值</th></tr>
-    <tr><td>LWT Topic</td><td><code>bms/device/{imei}/status</code></td></tr>
-    <tr><td>LWT Payload</td><td><code>{"imei":"{imei}","online":false,"timestamp":"{ISO8601时间}"}</code></td></tr>
-    <tr><td>LWT QoS</td><td>1</td></tr>
-    <tr><td>LWT Retain</td><td>true</td></tr>
-  </table>
-  <h3>2.5 QoS等级约定</h3>
-  <table>
-    <tr><th>消息类型</th><th>QoS等级</th><th>说明</th></tr>
-    <tr><td>心跳上报</td><td>0</td><td>允许丢失，高频消息</td></tr>
-    <tr><td>电池实时数据</td><td>1</td><td>至少一次，确保到达</td></tr>
-    <tr><td>告警/故障</td><td>1</td><td>至少一次，确保告警不丢失</td></tr>
-    <tr><td>设备注册</td><td>1</td><td>至少一次，确保注册成功</td></tr>
-    <tr><td>下行控制指令</td><td>1</td><td>至少一次，需设备确认</td></tr>
-    <tr><td>OTA升级指令</td><td>2</td><td>恰好一次，确保不重复执行</td></tr>
-  </table>
-</div>
+      <!-- ====================== 1. 概述 ====================== -->
+      <h2 id="s1">1. 概述</h2>
+      <div class="card">
+        <h4>1.1 文档目的与适用范围</h4>
+        <p>本协议定义了 BMS（电池管理系统）设备端与管理平台之间的 MQTT 通信接口。设备端为嵌入式硬件板子，通过 <b>MQTT 5.0</b> 协议接入 <b>EMQX 5.7.2</b> Broker；平台端通过 <b>共享订阅</b> 消费设备消息，并通过 <b>请求-响应模式</b> 向设备下发控制指令。</p>
+        <p>支持的通信内容：电池实时数据、开关状态、单体电压、GPS 定位、告警故障、OTA 升级、远程控制（锁定/重启/休眠/参数配置等）。</p>
+      </div>
 
-<!-- ====== 3. Topic命名规范 ====== -->
-<h2 id="s3">3. Topic命名规范</h2>
-<div class="card">
-  <h3>3.1 命名格式</h3>
-  <table>
-    <tr><th>方向</th><th>格式</th><th>说明</th></tr>
-    <tr><td><span class="tag tag-up">上行</span></td><td><code>bms/device/{imei}/{type}</code></td><td>设备上报数据</td></tr>
-    <tr><td><span class="tag tag-down">下行</span></td><td><code>bms/device/{imei}/cmd/{action}</code></td><td>平台下发指令</td></tr>
-    <tr><td><span class="tag tag-up">上行</span></td><td><code>bms/device/{imei}/resp</code></td><td>设备响应下行指令</td></tr>
-  </table>
-  <div class="note">说明：<code>{imei}</code> 替换为设备实际IMEI号；<code>{type}</code> 为消息类型；<code>{action}</code> 为指令动作类型。</div>
-  <h3>3.2 Topic清单</h3>
-  <table>
-    <tr><th>方向</th><th>Topic</th><th>说明</th><th>QoS</th><th>Retain</th></tr>
-    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/register</td><td>设备注册</td><td>1</td><td>false</td></tr>
-    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/heartbeat</td><td>心跳上报</td><td>0</td><td>false</td></tr>
-    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/status</td><td>在线状态（含LWT）</td><td>1</td><td>true</td></tr>
-    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/data</td><td>电池实时数据</td><td>1</td><td>false</td></tr>
-    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/switch</td><td>开关状态</td><td>1</td><td>false</td></tr>
-    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/voltage</td><td>单体电压</td><td>1</td><td>false</td></tr>
-    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/gps</td><td>GPS定位</td><td>1</td><td>false</td></tr>
-    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/alarm</td><td>告警/故障</td><td>1</td><td>false</td></tr>
-    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/ota/status</td><td>OTA升级状态</td><td>1</td><td>false</td></tr>
-    <tr><td><span class="tag tag-down">下行</span></td><td>bms/device/{imei}/cmd/lock</td><td>设备锁定/解锁</td><td>1</td><td>false</td></tr>
-    <tr><td><span class="tag tag-down">下行</span></td><td>bms/device/{imei}/cmd/restart</td><td>设备重启</td><td>1</td><td>false</td></tr>
-    <tr><td><span class="tag tag-down">下行</span></td><td>bms/device/{imei}/cmd/sleep</td><td>休眠/唤醒</td><td>1</td><td>false</td></tr>
-    <tr><td><span class="tag tag-down">下行</span></td><td>bms/device/{imei}/cmd/gps_restart</td><td>GPS模块重启</td><td>1</td><td>false</td></tr>
-    <tr><td><span class="tag tag-down">下行</span></td><td>bms/device/{imei}/cmd/config</td><td>参数配置下发</td><td>1</td><td>false</td></tr>
-    <tr><td><span class="tag tag-down">下行</span></td><td>bms/device/{imei}/cmd/fault_clear</td><td>故障消除</td><td>1</td><td>false</td></tr>
-    <tr><td><span class="tag tag-down">下行</span></td><td>bms/device/{imei}/cmd/ota</td><td>OTA升级指令</td><td>2</td><td>false</td></tr>
-    <tr><td><span class="tag tag-down">下行</span></td><td>bms/device/{imei}/cmd/sync</td><td>同步数据请求</td><td>1</td><td>false</td></tr>
-    <tr><td><span class="tag tag-up">上行</span></td><td>bms/device/{imei}/resp</td><td>指令执行响应</td><td>1</td><td>false</td></tr>
-  </table>
-</div>
+      <h3 id="s1-2">1.2 EMQX 5.7.2 系统架构</h3>
+      <div class="card">
+        <p>BMS 平台采用 EMQX 5.7.2 作为 MQTT 消息中间件，整体架构如下：</p>
+<pre class="ascii">┌──────────────────┐    MQTT 5.0 (TLS 8883)    ┌──────────────────────────────────┐
+│   BMS 设备端       │ ─────────────────────────▶ │          EMQX 5.7.2 Cluster        │
+│  (嵌入式板子 × N)  │ ◀───────────────────────── │   3 节点集群 · RocksDB 会话持久化   │
+└──────────────────┘  上行上报 / 下行指令         │   认证·ACL·规则引擎·数据集成       │
+                                                 └──────┬───────────────────────────┘
+                                                        │ 规则引擎 message 事件
+                              ┌─────────────────────────┼──────────────────────────┐
+                              ▼                         ▼                          ▼
+                    ┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+                    │ Webhook Sink     │     │ Kafka Sink       │     │ MySQL / InfluxDB  │
+                    │ → BMS业务API     │     │ → 数据管道        │     │ → 业务库 / 时序库  │
+                    └──────────────────┘     └──────────────────┘     └──────────────────┘
+                              │
+                    ┌──────────────────┐
+                    │ BMS 管理平台后端   │ ◀── 共享订阅 $share/bms-platform/bms/device/+/data
+                    │ (服务端消费+指令)  │ ──▶ Publish 下行指令（Request/Response 模式）
+                    └──────────────────┘</pre>
+        <h4>各组件职责</h4>
+        <div class="table-wrap"><table>
+          <tr><th>组件</th><th>版本</th><th>职责说明</th></tr>
+          <tr><td>MQTT Broker</td><td>EMQX 5.7.2（开源版/企业版）</td><td>接入设备连接，处理 MQTT 5.0 全属性报文、共享订阅、保留消息、遗嘱消息、主题重写、会话持久化</td></tr>
+          <tr><td>认证授权</td><td>内置DB / JWT / X.509 / MySQL / HTTP</td><td>设备连接认证（username+password / SCRAM / JWT / 双向TLS），Topic 级 ACL 授权</td></tr>
+          <tr><td>规则引擎</td><td>内置 SQL</td><td>对 <code>message.publish</code>、<code>client.connected</code> 等事件执行 SQL 过滤、字段提取、重发布</td></tr>
+          <tr><td>数据集成</td><td>Webhook / Kafka / MySQL / InfluxDB / ClickHouse</td><td>将设备数据转发至业务后端、消息管道、时序库与分析库</td></tr>
+          <tr><td>平台消费端</td><td>BMS 平台后端服务</td><td>通过共享订阅 <code>$share/bms-platform/…</code> 消费设备消息，多实例水平扩展；发布下行指令并关联响应</td></tr>
+        </table></div>
+      </div>
 
-<!-- ====== 4. 公共数据结构 ====== -->
-<h2 id="s4">4. 公共数据结构</h2>
-<div class="card">
-  <h3>4.1 公共字段</h3>
-  <p>所有上行消息的JSON Payload均包含以下公共字段：</p>
-  <table class="field-table">
-    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
-    <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备IMEI号（15位数字）</td></tr>
-    <tr><td>msgId</td><td>String</td><td class="req">是</td><td>消息唯一ID，UUID格式，用于消息去重</td></tr>
-    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>消息时间，ISO 8601格式：yyyy-MM-ddTHH:mm:ssZ</td></tr>
-    <tr><td>msgType</td><td>String</td><td class="req">是</td><td>消息类型，见3.2节Topic清单中的type值</td></tr>
-  </table>
-  <h3>4.2 下行指令公共字段</h3>
-  <table class="field-table">
-    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
-    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>指令唯一ID，UUID格式</td></tr>
-    <tr><td>action</td><td>String</td><td class="req">是</td><td>指令动作类型</td></tr>
-    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>下发时间，ISO 8601格式</td></tr>
-    <tr><td>params</td><td>Object</td><td class="opt">否</td><td>指令参数，不同action有不同的参数</td></tr>
-    <tr><td>timeout</td><td>Integer</td><td class="opt">否</td><td>超时时间（秒），默认30</td></tr>
-  </table>
-  <h3>4.3 设备响应公共字段</h3>
-  <p>设备收到下行指令后，需在 <code>bms/device/{imei}/resp</code> 上发布响应：</p>
-  <table class="field-table">
-    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
-    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>对应的指令ID</td></tr>
-    <tr><td>code</td><td>Integer</td><td class="req">是</td><td>响应码，0=成功，非0=失败（见第7节）</td></tr>
-    <tr><td>message</td><td>String</td><td class="opt">否</td><td>响应描述</td></tr>
-    <tr><td>data</td><td>Object</td><td class="opt">否</td><td>返回数据（部分指令需要）</td></tr>
-    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>响应时间</td></tr>
-  </table>
-</div>
+      <h3 id="s1-3">1.3 MQTT 5.0 协议特点（相对 3.1.1）</h3>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <tr><th>能力</th><th>MQTT 3.1.1</th><th>MQTT 5.0</th><th>BMS 中的用途</th></tr>
+          <tr><td>会话过期</td><td>会话永久存在</td><td>Session Expiry Interval 可配置过期</td><td>设备离线后保留会话，30秒内重连不丢离线指令</td></tr>
+          <tr><td>遗嘱延迟</td><td>立即发布</td><td>Will Delay Interval 延迟发布</td><td>网络抖动 10 秒内重连，不误报离线</td></tr>
+          <tr><td>自定义属性</td><td>无</td><td>User Properties 键值对</td><td>携带 protocol_version / device_type / msg_type 等业务上下文</td></tr>
+          <tr><td>消息过期</td><td>无</td><td>Message Expiry Interval</td><td>心跳30s过期、电池数据300s过期，过期消息不再投递</td></tr>
+          <tr><td>别名压缩</td><td>无</td><td>Topic Alias</td><td>减少窄带传输下 Topic 字符串重复开销</td></tr>
+          <tr><td>请求响应</td><td>自行约定</td><td>Response Topic + Correlation Data</td><td>下行指令与设备响应关联匹配</td></tr>
+          <tr><td>增强认证</td><td>仅用户密码</td><td>AUTH + Auth Method / Data（SCRAM）</td><td>设备接入安全认证</td></tr>
+          <tr><td>原因码</td><td>简单返回码</td><td>Reason Code 细分</td><td>精确区分授权失败、配额超限、报文格式错误等</td></tr>
+          <tr><td>服务端拒绝</td><td>仅 CONNACK</td><td>DISCONNECT 携带原因码 + Server Reference</td><td>过载/迁移时可引导客户端换节点</td></tr>
+        </table></div>
+        <div class="note">本协议所有设备端固件必须按 <b>MQTT 5.0</b> 实现（如使用 Paho / MQTT-C / SDK 需开启 MQTT 5 模式）。平台端建议使用 <code>emqx-enterprise 5.7.2</code>，以便启用排它订阅、连接抖动检测、Schema Registry 等企业特性。</div>
+      </div>
 
-<!-- ====== 5. 上行消息 ====== -->
-<h2 id="s5">5. 上行消息（设备→平台）</h2>
+      <!-- ====================== 2. 部署规范 ====================== -->
+      <h2 id="s2">2. EMQX Broker 部署规范</h2>
+      <div class="card">
+        <h3>2.1 版本与环境要求</h3>
+        <div class="table-wrap"><table>
+          <tr><th>项目</th><th>要求</th><th>说明</th></tr>
+          <tr><td>Broker 版本</td><td>EMQX 5.7.2</td><td>支持 MQTT 3.1/3.1.1/5.0 全协议栈</td></tr>
+          <tr><td>操作系统</td><td>CentOS 7.9+ / Ubuntu 20.04+ / Debian 11+</td><td>建议 Docker 方式部署（emqx/emqx:5.7.2）</td></tr>
+          <tr><td>硬件规格</td><td>每节点 4C8G 起步</td><td>按设备规模：1万设备建议 4C8G×3，10万设备建议 8C16G×5</td></tr>
+          <tr><td>存储</td><td>RocksDB 本地盘（SSD）</td><td>会话与消息持久化，建议单独数据盘</td></tr>
+          <tr><td>网络</td><td>设备接入 1883/8883，集群内网 5369/5370</td><td>节点间 RPC/Cluster 内网隔离</td></tr>
+        </table></div>
+      </div>
 
-<!-- 5.1 设备注册 -->
-<h3 id="s5-1">5.1 设备注册 <span class="tag tag-up">上行</span></h3>
-<div class="card">
-  <p><b>Topic：</b><code>bms/device/{imei}/register</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
-  <p>设备首次上线或重新连接时发送注册消息，上报设备基础信息。</p>
-  <h4>请求字段</h4>
-  <table class="field-table">
-    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
-    <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备IMEI号</td></tr>
-    <tr><td>imsi</td><td>String</td><td class="req">是</td><td>SIM卡IMSI号</td></tr>
-    <tr><td>deviceType</td><td>String</td><td class="req">是</td><td>设备型号，如 ZLB005D1507000_00</td></tr>
-    <tr><td>productType</td><td>String</td><td class="req">是</td><td>产品类型，如 家庭储能BMS、铅改锂储能BMS</td></tr>
-    <tr><td>batteryType</td><td>String</td><td class="req">是</td><td>电池类型，如 磷酸铁锂、三元锂</td></tr>
-    <tr><td>batteryStrings</td><td>Integer</td><td class="req">是</td><td>电池串数</td></tr>
-    <tr><td>hwVersion</td><td>String</td><td class="req">是</td><td>硬件版本号，如 AB3000X_H15S64Ah</td></tr>
-    <tr><td>swVersion</td><td>String</td><td class="req">是</td><td>软件版本号</td></tr>
-    <tr><td>sysVersion</td><td>String</td><td class="req">是</td><td>系统版本号</td></tr>
-    <tr><td>protocolVersion</td><td>String</td><td class="req">是</td><td>协议版本号，如 V1.0</td></tr>
-    <tr><td>msgId</td><td>String</td><td class="req">是</td><td>消息唯一ID</td></tr>
-    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>注册时间</td></tr>
-  </table>
-  <h4>示例</h4>
-  <pre>{
-  <span class="key">"imei"</span>: <span class="str">"864114070050327"</span>,
-  <span class="key">"imsi"</span>: <span class="str">"999010000000000"</span>,
-  <span class="key">"deviceType"</span>: <span class="str">"ZLB005D1507000_00"</span>,
-  <span class="key">"productType"</span>: <span class="str">"家庭储能BMS"</span>,
-  <span class="key">"batteryType"</span>: <span class="str">"磷酸铁锂"</span>,
-  <span class="key">"batteryStrings"</span>: <span class="num">16</span>,
-  <span class="key">"hwVersion"</span>: <span class="str">"AB3000X_H15S64Ah"</span>,
-  <span class="key">"swVersion"</span>: <span class="str">"ZLB005D-V2.3.1"</span>,
-  <span class="key">"sysVersion"</span>: <span class="str">"F0-AB3000X-VR2025042"</span>,
-  <span class="key">"protocolVersion"</span>: <span class="str">"V1.0"</span>,
-  <span class="key">"msgId"</span>: <span class="str">"a1b2c3d4-e5f6-7890-abcd-ef1234567890"</span>,
-  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T08:30:00Z"</span>
-}</pre>
-</div>
+      <h3 id="s2-2">2.2 监听器配置</h3>
+      <div class="card">
+        <p>EMQX 5.7.2 通过 HOCON 配置文件（<code>etc/emqx.conf</code>）或 Dashboard 配置监听器：</p>
+<pre class="hl"><code class="lang-hocon"># ===== 监听器配置（emqx.conf 节选）=====
+listeners.tcp.default {
+  bind = "0.0.0.0:1883"            # 设备 TCP 接入（生产环境建议仅内网/专线）
+  max_connections = 1024000
+}
+listeners.ssl.default {            # 设备 TLS 接入（生产推荐）
+  bind = "0.0.0.0:8883"
+  ssl_options {
+    certfile   = "/etc/emqx/certs/server.pem"
+    keyfile    = "/etc/emqx/certs/server.key"
+    cacertfile = "/etc/emqx/certs/ca.pem"
+    verify     = verify_none        # 双向认证时改为 verify_peer + fail_if_no_peer_cert
+  }
+}
+listeners.ws.default { bind = "0.0.0.0:8084" }   # 平台 WebSocket 调试接入
+listeners.wss.default { bind = "0.0.0.0:8085" }  # WSS 加密接入
+# QUIC 监听（可选，5.7 支持 MQTT over QUIC）
+listeners.quic.default { bind = "0.0.0.0:1453" }</code></pre>
+        <div class="table-wrap"><table>
+          <tr><th>端口</th><th>协议</th><th>用途</th><th>接入方</th></tr>
+          <tr><td>1883</td><td>MQTT/TCP</td><td>设备接入（明文，测试/内网）</td><td>设备端</td></tr>
+          <tr><td>8883</td><td>MQTT/TLS</td><td>设备接入（加密，生产推荐）</td><td>设备端</td></tr>
+          <tr><td>8084</td><td>MQTT/WS</td><td>平台调试、浏览器调试</td><td>平台运维</td></tr>
+          <tr><td>8085</td><td>MQTT/WSS</td><td>加密 WebSocket</td><td>平台运维</td></tr>
+          <tr><td>18083</td><td>HTTP</td><td>EMQX Dashboard（管理界面）</td><td>平台运维</td></tr>
+          <tr><td>8081</td><td>HTTP</td><td>REST API / 数据桥接管理</td><td>平台后端</td></tr>
+        </table></div>
+      </div>
 
-<!-- 5.2 心跳上报 -->
-<h3 id="s5-2">5.2 心跳上报 <span class="tag tag-up">上行</span></h3>
-<div class="card">
-  <p><b>Topic：</b><code>bms/device/{imei}/heartbeat</code> &nbsp;|&nbsp; <b>QoS：</b>0</p>
-  <p>设备定期发送心跳消息，上报基本状态。心跳间隔默认60秒，可通过平台配置修改。</p>
-  <h4>请求字段</h4>
-  <table class="field-table">
-    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
-    <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备IMEI号</td></tr>
-    <tr><td>online</td><td>Boolean</td><td class="req">是</td><td>在线状态，固定为true</td></tr>
-    <tr><td>soc</td><td>Float</td><td class="opt">否</td><td>当前SOC(%)，0-100</td></tr>
-    <tr><td>totalVoltage</td><td>Float</td><td class="opt">否</td><td>总电压(V)</td></tr>
-    <tr><td>current</td><td>Float</td><td class="opt">否</td><td>电流(A)，正=充电，负=放电</td></tr>
-    <tr><td>deviceStatus</td><td>String</td><td class="req">是</td><td>设备状态：online/offline/working</td></tr>
-    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>心跳时间</td></tr>
-  </table>
-  <h4>示例</h4>
-  <pre>{
-  <span class="key">"imei"</span>: <span class="str">"864114070050327"</span>,
-  <span class="key">"online"</span>: <span class="num">true</span>,
-  <span class="key">"soc"</span>: <span class="num">85.5</span>,
-  <span class="key">"totalVoltage"</span>: <span class="num">52.3</span>,
-  <span class="key">"current"</span>: <span class="num">10.2</span>,
-  <span class="key">"deviceStatus"</span>: <span class="str">"working"</span>,
-  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T08:31:00Z"</span>
-}</pre>
-</div>
+      <h3 id="s2-3">2.3 集群模式</h3>
+      <div class="card">
+        <p>生产环境采用 <b>3 节点静态集群</b>，EMQX 使用内部分布式 DB（DBT）在节点间同步路由表，任意节点可处理任意设备的消息路由：</p>
+<pre class="hl"><code class="lang-qt"># emqx.conf 集群配置
+node {
+  name   = "emqx@10.0.0.1"        # 每节点唯一
+  cookie = "bms-emqx-cookie-2026" # 集群共享 cookie
+}
+cluster {
+  name = "bms-emqx-cluster"
+  discovery_strategy = static     # 静态节点列表发现
+  static.seeds = ["emqx@10.0.0.1", "emqx@10.0.0.2", "emqx@10.0.0.3"]
+}
+zone.external = {                 # 设备接入区
+  mqtt.max_topic_alias = 16
+  mqtt.retain_available = true
+}</code></pre>
+        <div class="warn">设备端连接任意节点均可收发消息（路由自动转发）；平台端建议通过负载均衡（如 Nginx TCP 代理 / EMQX LB）连接集群，避免单点。RPC 端口 5370、集群发现端口 5380 需在节点间开放。</div>
+      </div>
 
-<!-- 5.3 电池实时数据 -->
-<h3 id="s5-3">5.3 电池实时数据上报 <span class="tag tag-up">上行</span></h3>
-<div class="card">
-  <p><b>Topic：</b><code>bms/device/{imei}/data</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
-  <p>设备定期上报电池实时数据，默认上报间隔30秒，可通过平台配置修改。</p>
-  <h4>请求字段</h4>
-  <table class="field-table">
-    <tr><th>字段</th><th>类型</th><th>必填</th><th>单位</th><th>说明</th></tr>
-    <tr><td>imei</td><td>String</td><td class="req">是</td><td>-</td><td>设备IMEI号</td></tr>
-    <tr><td>msgId</td><td>String</td><td class="req">是</td><td>-</td><td>消息唯一ID</td></tr>
-    <tr><td>totalVoltage</td><td>Float</td><td class="req">是</td><td>V</td><td>电池总电压</td></tr>
-    <tr><td>totalVoltageMv</td><td>Integer</td><td class="req">是</td><td>mV</td><td>电池总电压（毫伏，用于设备运维列表展示）</td></tr>
-    <tr><td>current</td><td>Float</td><td class="req">是</td><td>A</td><td>电流，正=充电，负=放电</td></tr>
-    <tr><td>soc</td><td>Float</td><td class="req">是</td><td>%</td><td>电池剩余电量百分比，0-100</td></tr>
-    <tr><td>soh</td><td>Float</td><td class="req">是</td><td>%</td><td>电池健康度百分比，0-100</td></tr>
-    <tr><td>cycleCount</td><td>Integer</td><td class="req">是</td><td>次</td><td>电池循环充放电次数</td></tr>
-    <tr><td>mosTemp</td><td>Float</td><td class="req">是</td><td>℃</td><td>MOS管温度</td></tr>
-    <tr><td>heatTemp</td><td>Float</td><td class="req">是</td><td>℃</td><td>加热温度</td></tr>
-    <tr><td>batteryTemp</td><td>Float</td><td class="req">是</td><td>℃</td><td>电池温度</td></tr>
-    <tr><td>batteryTempMax</td><td>Float</td><td class="opt">否</td><td>℃</td><td>最高电池温度</td></tr>
-    <tr><td>batteryTempMin</td><td>Float</td><td class="opt">否</td><td>℃</td><td>最低电池温度</td></tr>
-    <tr><td>protectionStatus</td><td>Integer</td><td class="req">是</td><td>-</td><td>保护状态码，bit位定义见9.2节</td></tr>
-    <tr><td>systemFault</td><td>Integer</td><td class="req">是</td><td>-</td><td>系统故障码，bit位定义见9.3节</td></tr>
-    <tr><td>dailyMileage</td><td>Integer</td><td class="opt">否</td><td>米</td><td>当天行驶里程（移动设备适用）</td></tr>
-    <tr><td>remainingCapacity</td><td>Float</td><td class="opt">否</td><td>Ah</td><td>剩余容量</td></tr>
-    <tr><td>ratedCapacity</td><td>Float</td><td class="opt">否</td><td>Ah</td><td>额定容量</td></tr>
-    <tr><td>chargeCount</td><td>Integer</td><td class="opt">否</td><td>次</td><td>充电次数</td></tr>
-    <tr><td>dischargeCount</td><td>Integer</td><td class="opt">否</td><td>次</td><td>放电次数</td></tr>
-    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>-</td><td>数据采集时间</td></tr>
-  </table>
-  <h4>示例</h4>
-  <pre>{
-  <span class="key">"imei"</span>: <span class="str">"864114070050327"</span>,
-  <span class="key">"msgId"</span>: <span class="str">"d4e5f6a7-b8c9-0123-4567-89abcdef0123"</span>,
-  <span class="key">"totalVoltage"</span>: <span class="num">52.3</span>,
-  <span class="key">"totalVoltageMv"</span>: <span class="num">52300</span>,
-  <span class="key">"current"</span>: <span class="num">10.2</span>,
-  <span class="key">"soc"</span>: <span class="num">85.5</span>,
-  <span class="key">"soh"</span>: <span class="num">92.0</span>,
-  <span class="key">"cycleCount"</span>: <span class="num">328</span>,
-  <span class="key">"mosTemp"</span>: <span class="num">35.2</span>,
-  <span class="key">"heatTemp"</span>: <span class="num">25.0</span>,
-  <span class="key">"batteryTemp"</span>: <span class="num">28.5</span>,
-  <span class="key">"batteryTempMax"</span>: <span class="num">29.1</span>,
-  <span class="key">"batteryTempMin"</span>: <span class="num">27.8</span>,
-  <span class="key">"protectionStatus"</span>: <span class="num">0</span>,
-  <span class="key">"systemFault"</span>: <span class="num">0</span>,
-  <span class="key">"remainingCapacity"</span>: <span class="num">85.5</span>,
-  <span class="key">"ratedCapacity"</span>: <span class="num">100.0</span>,
-  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T08:30:30Z"</span>
-}</pre>
-</div>
+      <h3 id="s2-4">2.4 MQTT 会话持久化（RocksDB）</h3>
+      <div class="card">
+        <p>EMQX 5.x 使用 <b>RocksDB</b> 本地嵌入式存储持久化 MQTT 会话（会话、订阅、QoS 1/2 消息、遗嘱、保留消息）。设备端可通过 <b>Session Expiry Interval</b> 控制会话生命周期：</p>
+<pre class="hl"><code class="lang-qt"># EMQX 5.0 ~ 5.6 配置
+durable_sessions = true
+# EMQX 5.7+ 配置（5.7 起由 durable_sessions 迁移至 session_persistence）
+session_persistence {
+  enable = true        # 开启会话持久化（默认开启）
+}</code></pre>
+        <h4>BMS 会话策略</h4>
+        <div class="table-wrap"><table>
+          <tr><th>场景</th><th>Session Expiry（秒）</th><th>说明</th></tr>
+          <tr><td>正常在线设备</td><td>300</td><td>掉线后 5 分钟内恢复会话，离线期间的 QoS 1/2 下行指令不丢失</td></tr>
+          <tr><td>休眠设备</td><td>7200</td><td>休眠 2 小时内唤醒，保留订阅与离线指令</td></tr>
+          <tr><td>OTA 升级设备</td><td>1800</td><td>升级重启期间保留会话，防止重启后指令丢失</td></tr>
+          <tr><td>已注销/报废设备</td><td>0</td><td>Session Expiry=0，连接断开即清除会话</td></tr>
+        </table></div>
+        <div class="note">RocksDB 数据目录默认 <code>data/rocksdb</code>，建议挂载 SSD 并纳入备份；EMQX 5.7.2 支持 Dashboard 查看各节点持久化存储用量。</div>
+      </div>
 
-<!-- 5.4 开关状态 -->
-<h3 id="s5-4">5.4 开关状态上报 <span class="tag tag-up">上行</span></h3>
-<div class="card">
-  <p><b>Topic：</b><code>bms/device/{imei}/switch</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
-  <p>设备上报各开关的实时状态，可与电池实时数据同步上报或独立上报。</p>
-  <h4>请求字段</h4>
-  <table class="field-table">
-    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
-    <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备IMEI号</td></tr>
-    <tr><td>msgId</td><td>String</td><td class="req">是</td><td>消息唯一ID</td></tr>
-    <tr><td>chargeSwitch</td><td>Boolean</td><td class="req">是</td><td>充电开关：true=开，false=关</td></tr>
-    <tr><td>dischargeSwitch</td><td>Boolean</td><td class="req">是</td><td>放电开关</td></tr>
-    <tr><td>heatSwitch</td><td>Boolean</td><td class="req">是</td><td>加热开关</td></tr>
-    <tr><td>preChargeSwitch</td><td>Boolean</td><td class="req">是</td><td>预充开关</td></tr>
-    <tr><td>currentLimitSwitch</td><td>Boolean</td><td class="req">是</td><td>限流开关</td></tr>
-    <tr><td>balanceSwitch</td><td>Boolean</td><td class="req">是</td><td>均衡开关</td></tr>
-    <tr><td>bluetoothSwitch</td><td>Boolean</td><td class="req">是</td><td>蓝牙开关</td></tr>
-    <tr><td>parallelChargeSwitch</td><td>Boolean</td><td class="req">是</td><td>并充开关</td></tr>
-    <tr><td>parallelDischargeSwitch</td><td>Boolean</td><td class="req">是</td><td>并放开关</td></tr>
-    <tr><td>ledSwitch</td><td>Boolean</td><td class="req">是</td><td>LED开关</td></tr>
-    <tr><td>chargerSwitch</td><td>Boolean</td><td class="req">是</td><td>充电机开关</td></tr>
-    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>状态采集时间</td></tr>
-  </table>
-  <h4>示例</h4>
-  <pre>{
-  <span class="key">"imei"</span>: <span class="str">"864114070050327"</span>,
-  <span class="key">"msgId"</span>: <span class="str">"e5f6a7b8-c9d0-1234-5678-9abcdef01234"</span>,
-  <span class="key">"chargeSwitch"</span>: <span class="num">true</span>,
-  <span class="key">"dischargeSwitch"</span>: <span class="num">true</span>,
-  <span class="key">"heatSwitch"</span>: <span class="num">false</span>,
-  <span class="key">"preChargeSwitch"</span>: <span class="num">false</span>,
-  <span class="key">"currentLimitSwitch"</span>: <span class="num">false</span>,
-  <span class="key">"balanceSwitch"</span>: <span class="num">true</span>,
-  <span class="key">"bluetoothSwitch"</span>: <span class="num">false</span>,
-  <span class="key">"parallelChargeSwitch"</span>: <span class="num">false</span>,
-  <span class="key">"parallelDischargeSwitch"</span>: <span class="num">false</span>,
-  <span class="key">"ledSwitch"</span>: <span class="num">true</span>,
-  <span class="key">"chargerSwitch"</span>: <span class="num">true</span>,
-  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T08:30:30Z"</span>
-}</pre>
-</div>
+      <!-- ====================== 3. 连接规范 ====================== -->
+      <h2 id="s3">3. MQTT 5.0 连接规范</h2>
+      <div class="card">
+        <h3>3.1 Client ID 与连接参数</h3>
+        <p>Client ID 格式：<code>bms_device_{IMEI}</code>，示例：<code>bms_device_864114130009327</code>。必须全局唯一，同一 IMEI 不允许同时建立两个连接。</p>
+        <div class="table-wrap"><table>
+          <tr><th>参数</th><th>值</th><th>说明</th></tr>
+          <tr><td>Broker 地址</td><td>mqtts://bms-mqtt.bms-system.com</td><td>生产使用 TLS 8883</td></tr>
+          <tr><td>Keep Alive</td><td>60 秒</td><td>CONNECT 报文 keepalive 字段</td></tr>
+          <tr><td>连接超时</td><td>15 秒</td><td>TCP/TLS 握手超时</td></tr>
+          <tr><td>协议版本</td><td>MQTT 5.0（Level 5）</td><td>必须声明 protocol level = 5</td></tr>
+          <tr><td>Clean Start</td><td>true / false 按场景</td><td>true=新会话；false=沿用 Session Expiry 内会话</td></tr>
+          <tr><td>Username</td><td>设备 IMEI 或账号</td><td>认证见 3.4 节</td></tr>
+          <tr><td>Password</td><td>Token / 证书 / SCRAM</td><td>认证见 3.4 节</td></tr>
+        </table></div>
+      </div>
 
-<!-- 5.5 单体电压 -->
-<h3 id="s5-5">5.5 单体电压上报 <span class="tag tag-up">上行</span></h3>
-<div class="card">
-  <p><b>Topic：</b><code>bms/device/{imei}/voltage</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
-  <p>设备上报各串电池单体的电压数据，以及最高/最低电压和压差。</p>
-  <h4>请求字段</h4>
-  <table class="field-table">
-    <tr><th>字段</th><th>类型</th><th>必填</th><th>单位</th><th>说明</th></tr>
-    <tr><td>imei</td><td>String</td><td class="req">是</td><td>-</td><td>设备IMEI号</td></tr>
-    <tr><td>msgId</td><td>String</td><td class="req">是</td><td>-</td><td>消息唯一ID</td></tr>
-    <tr><td>cellCount</td><td>Integer</td><td class="req">是</td><td>-</td><td>电池串数</td></tr>
-    <tr><td>cellVoltages</td><td>Integer[]</td><td class="req">是</td><td>mV</td><td>各串电池电压数组，长度等于cellCount</td></tr>
-    <tr><td>maxVoltage</td><td>Integer</td><td class="req">是</td><td>mV</td><td>最高单体电压</td></tr>
-    <tr><td>minVoltage</td><td>Integer</td><td class="req">是</td><td>mV</td><td>最低单体电压</td></tr>
-    <tr><td>voltageDiff</td><td>Integer</td><td class="req">是</td><td>mV</td><td>最高与最低电压差值</td></tr>
-    <tr><td>maxVoltageIndex</td><td>Integer</td><td class="req">是</td><td>-</td><td>最高电压所在串号（从1开始）</td></tr>
-    <tr><td>minVoltageIndex</td><td>Integer</td><td class="req">是</td><td>-</td><td>最低电压所在串号（从1开始）</td></tr>
-    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>-</td><td>采集时间</td></tr>
-  </table>
-  <h4>示例</h4>
-  <pre>{
-  <span class="key">"imei"</span>: <span class="str">"864114070050327"</span>,
-  <span class="key">"msgId"</span>: <span class="str">"f6a7b8c9-d0e1-2345-6789-abcdef012345"</span>,
-  <span class="key">"cellCount"</span>: <span class="num">16</span>,
-  <span class="key">"cellVoltages"</span>: [<span class="num">3265</span>, <span class="num">3268</span>, <span class="num">3270</span>, <span class="num">3263</span>, <span class="num">3271</span>, <span class="num">3269</span>, <span class="num">3267</span>, <span class="num">3264</span>, <span class="num">3272</span>, <span class="num">3266</span>, <span class="num">3265</span>, <span class="num">3268</span>, <span class="num">3270</span>, <span class="num">3263</span>, <span class="num">3269</span>, <span class="num">3271</span>],
-  <span class="key">"maxVoltage"</span>: <span class="num">3272</span>,
-  <span class="key">"minVoltage"</span>: <span class="num">3263</span>,
-  <span class="key">"voltageDiff"</span>: <span class="num">9</span>,
-  <span class="key">"maxVoltageIndex"</span>: <span class="num">9</span>,
-  <span class="key">"minVoltageIndex"</span>: <span class="num">4</span>,
-  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T08:30:30Z"</span>
-}</pre>
-</div>
+      <h3 id="s3-2">3.2 CONNECT 报文属性（完整版）</h3>
+      <div class="card">
+        <p>设备连接时，CONNECT 报文可变头属性（Properties）应按如下约定设置：</p>
+        <div class="table-wrap"><table>
+          <tr><th>属性（MQTT 5.0）</th><th>属性ID</th><th>BMS 约定值</th><th>说明</th></tr>
+          <tr><td>Session Expiry Interval</td><td>0x11</td><td>300（在线）/ 7200（休眠）</td><td>会话在断线后的保留时长，见 2.4 节</td></tr>
+          <tr><td>Will Delay Interval</td><td>0x18</td><td>10</td><td>遗嘱消息延迟 10 秒发布，避免网络抖动误报离线</td></tr>
+          <tr><td>Will Topic</td><td>0x18 载荷</td><td>bms/device/{imei}/status</td><td>遗嘱发布 Topic（与保留消息同一 Topic）</td></tr>
+          <tr><td>Will Payload</td><td>-</td><td>{"online":false,"reason":"will"}</td><td>遗嘱载荷，见 6.9 节</td></tr>
+          <tr><td>Will QoS</td><td>0x04</td><td>1</td><td>遗嘱至少一次</td></tr>
+          <tr><td>Will Retain</td><td>0x05</td><td>1（true）</td><td>遗嘱替换保留的在线状态</td></tr>
+          <tr><td>Request Response Information</td><td>0x19</td><td>1</td><td>请求服务端返回 Response Information，支持请求-响应模式</td></tr>
+          <tr><td>Request Problem Information</td><td>0x17</td><td>1</td><td>允许服务端返回 Reason String</td></tr>
+          <tr><td>Receive Maximum</td><td>0x21</td><td>64</td><td>客户端最大并发 QoS 1/2 未确认数</td></tr>
+          <tr><td>Topic Alias Maximum</td><td>0x22</td><td>16</td><td>客户端支持的 Topic 别名上限</td></tr>
+          <tr><td>Maximum Packet Size</td><td>0x27</td><td>0（不限）或 1MB</td><td>单包最大字节数</td></tr>
+          <tr><td>User Properties</td><td>0x26</td><td>见下表</td><td>连接级自定义属性</td></tr>
+          <tr><td>Auth Method / Auth Data</td><td>0x15 / 0x16</td><td>SCRAM-SHA-256（可选）</td><td>增强认证，见 3.4.4</td></tr>
+        </table></div>
+        <h4>CONNECT 固定 User Properties 约定</h4>
+        <div class="table-wrap"><table>
+          <tr><th>Key</th><th>值示例</th><th>说明</th></tr>
+          <tr><td>protocol_version</td><td>MQTT-5.0</td><td>协议版本标记，供平台过滤兼容设备</td></tr>
+          <tr><td>device_type</td><td>bms-zlb005d</td><td>设备型号族</td></tr>
+          <tr><td>product_type</td><td>家庭储能BMS</td><td>产品线（可选）</td></tr>
+          <tr><td>firmware_version</td><td>V2.3.1</td><td>固件版本（可选）</td></tr>
+        </table></div>
+        <h4>CONNECT 报文（属性头示意）</h4>
+<pre class="hl"><code class="lang-qt">// MQTT 5.0 CONNECT 报文属性示意
+CONNECT:
+  Protocol: MQTT 5.0 (Level 5)
+  ClientID: bms_device_864114130050327
+  Username: 864114130050327
+  Password: [AES-GCM 加密的 ClientSecret]
+  KeepAlive: 60
+  CleanStart: true
+  Properties:
+    Session Expiry Interval  = 300
+    Request Response Information = 1
+    Request Problem Information  = 1
+    Receive Maximum          = 64
+    Topic Alias Maximum      = 16
+    User Properties          = {protocol_version: MQTT-5.0, device_type: bms-zlb005d, product_type: 家庭储能BMS}
+  Will:
+    Will Topic    = bms/device/8641141300500099/status
+    Will Payload  = {"online":false,"channel":"will_timeout"}
+    Will QoS      = 1
+    Will Retain   = true
+    Will Delay Interval = 10</code></pre>
+      </div>
 
-<!-- 5.6 GPS定位 -->
-<h3 id="s5-6">5.6 GPS定位上报 <span class="tag tag-up">上行</span></h3>
-<div class="card">
-  <p><b>Topic：</b><code>bms/device/{imei}/gps</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
-  <p>设备上报GPS定位数据，用于定位监控功能。移动设备实时上报，固定设备可低频上报。</p>
-  <h4>请求字段</h4>
-  <table class="field-table">
-    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
-    <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备IMEI号</td></tr>
-    <tr><td>msgId</td><td>String</td><td class="req">是</td><td>消息唯一ID</td></tr>
-    <tr><td>latitude</td><td>Double</td><td class="req">是</td><td>纬度，WGS84坐标系，6位小数</td></tr>
-    <tr><td>longitude</td><td>Double</td><td class="req">是</td><td>经度，WGS84坐标系，6位小数</td></tr>
-    <tr><td>altitude</td><td>Double</td><td class="opt">否</td><td>海拔高度（米）</td></tr>
-    <tr><td>speed</td><td>Float</td><td class="opt">否</td><td>移动速度（km/h）</td></tr>
-    <tr><td>direction</td><td>Float</td><td class="opt">否</td><td>移动方向（0-360度）</td></tr>
-    <tr><td>gpsAccuracy</td><td>Float</td><td class="opt">否</td><td>定位精度（米）</td></tr>
-    <tr><td>satelliteCount</td><td>Integer</td><td class="opt">否</td><td>卫星数量</td></tr>
-    <tr><td>gpsStatus</td><td>Integer</td><td class="req">是</td><td>GPS状态：0=未定位，1=已定位，2=模块异常</td></tr>
-    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>定位时间</td></tr>
-  </table>
-  <h4>示例</h4>
-  <pre>{
-  <span class="key">"imei"</span>: <span class="str">"864114070050327"</span>,
-  <span class="key">"msgId"</span>: <span class="str">"a7b8c9d0-e1f2-3456-7890-bcdef0123456"</span>,
-  <span class="key">"latitude"</span>: <span class="num">22.656432</span>,
-  <span class="key">"longitude"</span>: <span class="num">113.923456</span>,
-  <span class="key">"altitude"</span>: <span class="num">35.2</span>,
-  <span class="key">"speed"</span>: <span class="num">0.0</span>,
-  <span class="key">"direction"</span>: <span class="num">0</span>,
-  <span class="key">gpsAccuracy"</span>: <span class="num">5.0</span>,
-  <span class="key">"satelliteCount"</span>: <span class="num">12</span>,
-  <span class="key">"gpsStatus"</span>: <span class="num">1</span>,
-  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T08:30:30Z"</span>
-}</pre>
-</div>
+      <h3 id="s3-3">3.3 CONNACK 报文属性</h3>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <tr><th>属性（MQTT 5.0）</th><th>属性ID</th><th>说明</th></tr>
+          <tr><td>Session Present</td><td>可变头标志</td><td>0=服务端新建会话，1=恢复旧会话</td></tr>
+          <tr><td>Reason Code</td><td>-</td><td>0x00=成功；0x8D=ClientID不合法；0x87=未授权；0x89=ClientID被占用；0x9C=请用另一服务端等，详见第10章</td></tr>
+          <tr><td>Session Expiry Interval</td><td>0x11</td><td>服务端协商后的会话过期时间</td></tr>
+          <tr><td>Assigned Client ID</td><td>0x12</td><td>服务端分配的 Client ID（设备未带 ClientID 时返回）</td></tr>
+          <tr><td>Server Keep Alive</td><td>0x13</td><td>服务端要求的 KeepAlive，覆盖客户端值（如 EMQX 下发 120 秒）</td></tr>
+          <tr><td>Response Information</td><td>0x1A</td><td>CONNECT 请求 RequestResponseInfo 时返回的响应主题前缀</td></tr>
+          <tr><td>Server Reference</td><td>0x1C</td><td>重定向提示（负载均衡场景下返回新节点地址）</td></tr>
+          <tr><td>Maximum Packet Size</td><td>0x27</td><td>服务端最大包长限制</td></tr>
+          <tr><td>Topic Alias Maximum</td><td>0x22</td><td>服务端 Topic Alias 上限</td></tr>
+          <tr><td>Maximum QoS</td><td>0x24</td><td>服务端支持的最大 QoS（EMQX 默认2）</td></tr>
+          <tr><td>Retain Available</td><td>0x25</td><td>0=服务端不支持保留消息</td></tr>
+          <tr><td>Wildcard Subscription Available</td><td>0x28</td><td>是否支持通配订阅</td></tr>
+          <tr><td>Subscription Identifiers Available</td><td>0x29</td><td>是否支持订阅标识</td></tr>
+          <tr><td>Shared Subscription Available</td><td>0x2A</td><td>0=不支持共享订阅</td></tr>
+          <tr><td>User Properties</td><td>0x26</td><td>服务端返回的连接上下文属性</td></tr>
+        </table></div>
+        <div class="note">设备端必须校验 CONNACK 的 <b>Reason Code</b>（MQTT 5.0 用 Reason Code 替代 3.1.1 的 Return Code），并按 <b>Server Reference</b> 或 Reason Code 提示切换节点重连。</div>
+      </div>
 
-<!-- 5.7 告警/故障 -->
-<h3 id="s5-7">5.7 告警/故障上报 <span class="tag tag-up">上行</span></h3>
-<div class="card">
-  <p><b>Topic：</b><code>bms/device/{imei}/alarm</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
-  <p>设备检测到告警或故障时主动上报，支持告警产生和告警恢复两种事件。</p>
-  <h4>请求字段</h4>
-  <table class="field-table">
-    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
-    <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备IMEI号</td></tr>
-    <tr><td>msgId</td><td>String</td><td class="req">是</td><td>消息唯一ID</td></tr>
-    <tr><td>alarmType</td><td>String</td><td class="req">是</td><td>告警类型，见8.1节告警码表</td></tr>
-    <tr><td>alarmCode</td><td>Integer</td><td class="req">是</td><td>告警/故障码，见第8节</td></tr>
-    <tr><td>alarmLevel</td><td>String</td><td class="req">是</td><td>告警级别：warning（警告）/ fault（故障）/ critical（严重）</td></tr>
-    <tr><td>alarmEvent</td><td>String</td><td class="req">是</td><td>事件类型：trigger（触发）/ recover（恢复）</td></tr>
-    <tr><td>alarmDesc</td><td>String</td><td class="req">是</td><td>告警描述文字</td></tr>
-    <tr><td>currentValues</td><td>Object</td><td class="opt">否</td><td>触发时的关键数据快照</td></tr>
-    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>告警时间</td></tr>
-  </table>
-  <h4>示例 — 充电机高温故障</h4>
-  <pre>{
-  <span class="key">"imei"</span>: <span class="str">"867584030010156"</span>,
-  <span class="key">"msgId"</span>: <span class="str">"b8c9d0e1-f2a3-4567-8901-cdef01234567"</span>,
-  <span class="key">"alarmType"</span>: <span class="str">"温度告警"</span>,
-  <span class="key">"alarmCode"</span>: <span class="num">201</span>,
-  <span class="key">"alarmLevel"</span>: <span class="str">"fault"</span>,
-  <span class="key">"alarmEvent"</span>: <span class="str">"trigger"</span>,
-  <span class="key">"alarmDesc"</span>: <span class="str">"充电机高温故障"</span>,
-  <span class="key">"currentValues"</span>: {
-    <span class="key">"chargerTemp"</span>: <span class="num">68.5</span>,
-    <span class="key">"threshold"</span>: <span class="num">65</span>
+      <h3 id="s3-4">3.4 认证方式</h3>
+      <div class="card">
+        <p>EMQX 5.7.2 支持多级认证链（Authentication Chain），BMS 平台建议按下表组合：</p>
+        <div class="table-wrap"><table>
+          <tr><th>方式</th><th>适用设备</th><th>EMQX 配置</th><th>说明</th></tr>
+          <tr><td><b>用户名 + 密码</b></td><td>所有设备（默认）</td><td>内置DB / MySQL / Redis / HTTP</td><td>Username=IMEI，Password=出厂预置 Token</td></tr>
+          <tr><td>JWT</td><td>平台接入的第三方服务</td><td>JWT 认证（HS256/RS256）</td><td>平台后端签发，携带用户/角色声明</td></tr>
+          <tr><td>X.509 证书</td><td>生产高安全场景</td><td>监听器双向 TLS + 证书认证</td><td>证书 CN/OU 映射 Client ID</td></tr>
+          <tr><td>SCRAM 增强认证</td><td>对安全要求高的设备</td><td>SCRAM-SHA-1 / SCRAM-SHA-256</td><td>MQTT 5.0 AUTH 报文双向认证，密码不落网</td></tr>
+        </table></div>
+        <h4>3.4.1 用户名密码（内置 DB / 密码认证）</h4>
+<pre class="hl"><code class="lang-qt"># Dashboard → 认证授权 → 认证 → 密码认证（内置数据库）
+# 或 etc/emqx.conf
+authentication = [
+  {
+    mechanism = password_based
+    backend   = built_in_database   # 可选 mysql / postgresql / redis / mongodb / http / ldap
+    password_hash_algorithm {
+      name = pbkdf2
+      mac_fun = sha256
+      iterations = 4096
+    }
+    user_id_type = username
+  }
+]</code></pre>
+        <div class="note">密码采用 <code>PBKDF2-SHA256</code> 存储，设备侧将 IMEI + 出厂盐值派生 Token，禁止明文传输。</div>
+        <h4>3.4.2 JWT 认证</h4>
+<pre class="hl"><code class="lang-qt">authentication = [
+  {
+    mechanism = jwt
+    backend   = { type = hmac_based, algorithm = HS256, secret = "bms-jwt-secret" }
+    from = password
+    acl_claim_name = "acl"
+  }
+]</code></pre>
+        <h4>3.4.3 X.509 证书认证</h4>
+<pre class="hl"><code class="lang-qt">listeners.ssl.default {
+  bind = "0.0.0.0:8883"
+  ssl_options {
+    certfile = "/etc/emqx/certs/server.pem"
+    keyfile  = "/etc/emqx/certs/server.key"
+    cacertfile = "/etc/emqx/certs/ca.pem"
+    verify_peer = true
+    fail_if_no_peer_cert = true
+  }
+}
+# 证书 CN = 设备 IMEI，EMQX 从证书 CN 提取 Client ID / 用户名</code></pre>
+        <h4>3.4.4 SCRAM 增强认证（MQTT 5.0 AUTH）</h4>
+<pre class="hl"><code class="lang-qt"># MQTT 5.0 增强认证：CONNECT 携带 Auth Method = "SCRAM-SHA-256"
+# 认证流程（AUTH 报文往返 2~3 次，密码不落网）
+设备端                          EMQX
+  │  CONNECT(AuthMethod=SCRAM-SHA-256, AuthData=ClientFirst)   │
+  ├──────────────────────────────────────────────────────────────▶
+  │  AUTH(AuthMethod, AuthData=ServerFirst)  ◀────────────────────
+  │──────────────────────────────────────────────────────────────▶
+  │  AUTH(AuthMethod, AuthData=ClientFinal)
+  │  CONNACK(ReasonCode=0x00)              ◀──────────────────────
+  └───────────────────────────────────────────────────────────────</code></pre>
+      </div>
+
+      <h3 id="s3-5">3.5 连接状态管理</h3>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <tr><th>场景</th><th>处理</th><th>说明</th></tr>
+          <tr><td>心跳超时</td><td>服务端断开 + 发布遗嘱</td><td>KeepAlive 超时（60秒）未收到报文，EMQX 断开连接</td></tr>
+          <tr><td>Will Delay</td><td>10 秒延迟发布</td><td>10 秒内重连成功则不发布遗嘱，避免误报离线</td></tr>
+          <tr><td>异常离线</td><td>遗嘱发布 + 状态保留</td><td><code>status</code> Topic 保留消息更新为 offline</td></tr>
+          <tr><td>正常退出</td><td>DISCONNECT(0x04)</td><td>设备主动断开并清除会话</td></tr>
+          <tr><td>黑名单</td><td>拒绝连接/发布</td><td>Dashboard 黑名单按 clientid / username / ip</td></tr>
+        </table></div>
+      </div>
+
+      <h3 id="s3-6">3.6 连接保护（EMQX 特有）</h3>
+      <div class="card">
+        <h4>3.6.1 连接抖动检测（Connection Jitter Detection）</h4>
+        <p>防止设备因信号差在短时间内反复上下线（抖动）导致消息风暴。Dashboard → 模块 → 连接抖动检测，阈值配置示例：</p>
+<pre class="hl"><code class="lang-qt"># 抖动检测模块（Dashboard 配置）
+connection_jitter_detection {
+  # 判定阈值：3 秒内重复重连超过 5 次视为抖动
+  min_jitter_ms = 3000
+  num_limit = 5
+}</code></pre>
+        <h4>3.6.2 黑名单（Blacklist）</h4>
+        <div class="table-wrap"><table>
+          <tr><th>类型</th><th>示例</th><th>动作</th></tr>
+          <tr><td>Client ID</td><td>bms_device_864114070050099</td><td>deny（拒绝连接）</td></tr>
+          <tr><td>Username</td><td>864114070050099</td><td>deny</td></tr>
+          <tr><td>IP</td><td>203.0.113.8</td><td>deny</td></tr>
+          <tr><td>IP 段（CIDR）</td><td>203.0.113.0/24</td><td>deny</td></tr>
+        </table></div>
+        <h4>3.6.3 速率限制（Rate Limit）</h4>
+        <p>Dashboard → 限流，按 Client ID / Username / 全局限制以下速率：</p>
+        <div class="table-wrap"><table>
+          <tr><th>限流项</th><th>建议值</th><th>说明</th></tr>
+          <tr><td>连接速率</td><td>1000/s</td><td>conn_rate</td></tr>
+          <tr><td>发布速率</td><td>5000 msg/s / 客户端</td><td>msg_rate</td></tr>
+          <tr><td>订阅速率</td><td>500/s</td><td>sub_rate</td></tr>
+        </table></div>
+      </div>
+
+      <!-- ====================== 4. Topic 命名规范 ====================== -->
+      <h2 id="s4">4. Topic 命名规范</h2>
+      <div class="card">
+        <h3>4.1 命名原则与格式</h3>
+        <div class="table-wrap"><table>
+          <tr><th>方向</th><th>格式</th><th>说明</th></tr>
+          <tr><td><span class="tag tag-up">上行</span></td><td><code>bms/device/{imei}/{type}</code></td><td>设备上报数据，type 见 4.2 清单</td></tr>
+          <tr><td><span class="tag tag-down">下行</span></td><td><code>bms/device/{imei}/cmd/{action}</code></td><td>平台下发指令</td></tr>
+          <tr><td><span class="tag tag-up">上行</span></td><td><code>bms/device/{imei}/resp</code></td><td>设备对下行指令的响应（请求-响应模式）</td></tr>
+          <tr><td><span class="tag tag-up">上行</span></td><td><code>bms/device/{imei}/status</code></td><td>在线状态（保留消息 + 遗嘱消息同 Topic）</td></tr>
+        </table></div>
+        <div class="note">{imei} 替换为设备实际 IMEI（15 位数字）；{type} / {action} 为小写英文字母与下划线。Topic 一律小写，禁止中文。</div>
+      </div>
+
+      <h3 id="s4-2">4.2 Topic 清单</h3>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <tr><th>方向</th><th>Topic</th><th>说明</th><th>QoS</th><th>Retain</th></tr>
+          <tr><td><span class="tag tag-up">上行</span></td><td><code>bms/device/{imei}/register</code></td><td>设备注册</td><td>1</td><td>false</td></tr>
+          <tr><td><span class="tag tag-up">上行</span></td><td><code>bms/device/{imei}/heartbeat</code></td><td>心跳上报</td><td>0</td><td>false</td></tr>
+          <tr><td><span class="tag tag-up">上行</span></td><td><code>bms/device/{imei}/status</code></td><td>在线状态（含 LWT）</td><td>1</td><td><b>true</b>（expiry 86400）</td></tr>
+          <tr><td><span class="tag tag-up">上行</span></td><td><code>bms/device/{imei}/data</code></td><td>电池实时数据</td><td>1</td><td>false</td></tr>
+          <tr><td><span class="tag tag-up">上行</span></td><td><code>bms/device/{imei}/switch</code></td><td>开关状态</td><td>1</td><td>false</td></tr>
+          <tr><td><span class="tag tag-up">上行</span></td><td><code>bms/device/{imei}/voltage</code></td><td>单体电压</td><td>1</td><td>false</td></tr>
+          <tr><td><span class="tag tag-up">上行</span></td><td><code>bms/device/{imei}/gps</code></td><td>GPS 定位</td><td>1</td><td>false</td></tr>
+          <tr><td><span class="tag tag-up">上行</span></td><td><code>bms/device/{imei}/alarm</code></td><td>告警 / 故障</td><td>1</td><td>false</td></tr>
+          <tr><td><span class="tag tag-up">上行</span></td><td><code>bms/device/{imei}/ota/status</code></td><td>OTA 升级状态</td><td>1</td><td>false</td></tr>
+          <tr><td><span class="tag tag-up">上行</span></td><td><code>bms/device/{imei}/resp</code></td><td>指令执行响应</td><td>1</td><td>false</td></tr>
+          <tr><td><span class="tag tag-down">下行</span></td><td><code>bms/device/{imei}/cmd/lock</code></td><td>锁定 / 解锁</td><td>1</td><td>false</td></tr>
+          <tr><td><span class="tag tag-down">下行</span></td><td><code>bms/device/{imei}/cmd/restart</code></td><td>设备重启</td><td>1</td><td>false</td></tr>
+          <tr><td><span class="tag tag-down">下行</span></td><td><code>bms/device/{imei}/cmd/sleep</code></td><td>休眠 / 唤醒</td><td>1</td><td>false</td></tr>
+          <tr><td><span class="tag tag-down">下行</span></td><td><code>bms/device/{imei}/cmd/gps_restart</code></td><td>GPS 模块重启</td><td>1</td><td>false</td></tr>
+          <tr><td><span class="tag tag-down">下行</span></td><td><code>bms/device/{imei}/cmd/config</code></td><td>参数配置下发</td><td>1</td><td>false</td></tr>
+          <tr><td><span class="tag tag-down">下行</span></td><td><code>bms/device/{imei}/cmd/fault_clear</code></td><td>故障消除</td><td>1</td><td>false</td></tr>
+          <tr><td><span class="tag tag-down">下行</span></td><td><code>bms/device/{imei}/cmd/ota</code></td><td>OTA 升级指令</td><td>2</td><td>false</td></tr>
+          <tr><td><span class="tag tag-down">下行</span></td><td><code>bms/device/{imei}/cmd/sync</code></td><td>同步数据请求</td><td>1</td><td>false</td></tr>
+        </table></div>
+      </div>
+
+      <h3 id="s4-3">4.3 共享订阅（$share / $queue）</h3>
+      <div class="card">
+        <p>平台消费端多实例部署时，使用 <b>共享订阅</b> 实现消息负载均衡（一条消息只投递给一个消费者）：</p>
+<pre class="hl"><code class="lang"># 共享订阅格式
+$share/{group}/{topic}          # 群组共享：组内轮流投递
+$queue/{topic}                  # 等价 $share/broker/{topic}，全局共享
+
+# BMS 平台消费端示例（三实例消费电池数据，消息在组内轮询）
+$share/bms-platform/bms/device/+/data
+$share/bms-platform/bms/device/+/alarm
+$share/bms-platform/bms/device/+/heartbeat
+# 独立消费者（状态消息需每实例都收到，不能用共享订阅）
+bms/device/+/status</code></pre>
+        <div class="warn"><b>重要限制（MQTT 5.0 规范）</b>：<br>① 共享订阅 <b>不接收保留消息</b>——设备在线状态（status Topic，Retain=true）必须使用非共享订阅，每个消费实例单独订阅；<br>② 共享订阅不能与主题别名同时使用；<br>③ <code>$queue/</code> 是 MQTT 3.1.1 时代的兼容写法，新开发统一使用 <code>$share/</code>。</div>
+      </div>
+
+      <h3 id="s4-4">4.4 主题重写规则（EMQX Topic Rewrite）</h3>
+      <div class="card">
+        <p>EMQX 支持在客户端发布 / 订阅前重写 Topic（正则匹配 + 分组捕获），用于兼容旧固件、多版本协议统一路由：</p>
+<pre class="hl"><code class="lang-qt"># emqx.conf — 主题重写规则
+rewrite {
+  enable = true
+  rules = [
+    # 旧固件 v1.x：bms/v1/{imei}/xxx → bms/device/{imei}/xxx
+    { from = "^bms/v1/([0-9]{15})/([a-z_]+)$",
+      to   = "bms/device/$1/$2",
+      re   = "^$", action = publish },
+    # 下行指令订阅统一化：bms/{imei}/cmd/# → bms/device/{imei}/cmd/#
+    { from = "^bms/([0-9]{15})/cmd/([a-z_]+)$",
+      to   = "bms/device/$1/cmd/$2", re = "^$", action = subscribe }
+  ]
+}</code></pre>
+        <div class="note">规则按声明顺序匹配，命中后停止；重写动作可分 <code>publish</code> / <code>subscribe</code> / <code>all</code>。</div>
+      </div>
+
+      <h3 id="s4-5">4.5 自动订阅（Auto Subscribe）</h3>
+      <div class="card">
+        <p>设备连接成功后，EMQX 可自动为设备建立订阅（免去设备端 SUBSCRIBE 逻辑，节省链路交互）：</p>
+<pre class="hl"><code class="lang-qt"># Dashboard → 模块 → 自动订阅
+auto_subscribe {
+  topics = [
+    { topic = "bms/device/${clientid}/cmd/#",  qos = 1 },   # 接收全部下行指令
+    { topic = "bms/device/${clientid}/ota/#",  qos = 1 }    # OTA 相关下行
+  ]
+  use_clientid = true
+}</code></pre>
+        <div class="note">${clientid} 为 EMQX 占位符（也支持 ${username}），订阅动作由 Broker 完成后；若设备侧不依赖自动订阅，可在设备端显式 SUBSCRIBE 同一 Topic（推荐显式订阅，便于固件自检）。</div>
+      </div>
+
+      <h3 id="s4-6">4.6 EMQX 特有 Topic 特性</h3>
+      <div class="card">
+        <h4>4.6.1 延迟发布（Delayed Publish）</h4>
+        <p>发布到 <code>$delayed/{delay_seconds}/{topic}</code>，消息将在指定延迟后按原始 Topic 发布。BMS 可用于「延迟下发」场景（如 30 秒后自动锁定）：</p>
+<pre class="hl"><code class="lang"># 发布到延迟 Topic
+Publish: $delayed/30/bms/device/864114130050099/cmd/lock   QoS=1
+# 30 秒后 EMQX 自动发布到原始 Topic：bms/device/864114130050099/cmd/lock</code></pre>
+        <h4>4.6.2 排它订阅（Exclusive Subscription）</h4>
+        <p>Topic 前缀 <code>$exclusive/</code>：同一 Topic 只允许一个订阅者。适用于「在线状态唯一消费」：</p>
+        <pre class="hl"><code class="lang">SUBSCRIBE: $exclusive/bms/device/+/status</code></pre>
+        <h4>4.6.3 系统主题（$SYS）与 $share 前缀保护</h4>
+        <p><code>$SYS/</code> 为 Broker 内部统计主题，<code>$share/</code>、<code>$queue/</code>、<code>$exclusive/</code>、<code>$delayed/</code> 均为保留前缀，业务 Topic 一律不使用 <code>$</code> 开头（详见 12.2 系统主题清单）。</p>
+      </div>
+
+      <!-- ====================== 5. 消息属性 ====================== -->
+      <h2 id="s5">5. MQTT 5.0 消息属性</h2>
+      <div class="card">
+        <h3>5.1 PUBLISH 属性总览</h3>
+        <div class="table-wrap"><table>
+          <tr><th>属性</th><th>属性ID</th><th>BMS 约定</th><th>说明</th></tr>
+          <tr><td>Payload Format Indicator</td><td>0x01</td><td>1（UTF-8 编码的 JSON）</td><td>载荷格式声明，用于校验</td></tr>
+          <tr><td>Message Expiry Interval</td><td>0x02</td><td>按消息类型（见 5.3）</td><td>消息过期后 Broker 不再投递</td></tr>
+          <tr><td>Topic Alias</td><td>0x23</td><td>1~16（见 5.4）</td><td>Topic 压缩</td></tr>
+          <tr><td>Response Topic</td><td>0x08</td><td>bms/device/{imei}/resp</td><td>请求-响应模式使用（下行）</td></tr>
+          <tr><td>Correlation Data</td><td>0x09</td><td>cmdId（base64）</td><td>关联请求与响应</td></tr>
+          <tr><td>User Properties</td><td>0x26</td><td>业务路由字段（见 5.2）</td><td>随消息携带的自定义键值</td></tr>
+          <tr><td>Content Type</td><td>0x03</td><td>application/json</td><td>与 Payload Format 配合</td></tr>
+          <tr><td>Subscription Identifier</td><td>0x0B</td><td>可选</td><td>共享订阅与规则引擎过滤</td></tr>
+        </table></div>
+      </div>
+
+      <h3 id="s5-2">5.2 User Properties 约定</h3>
+      <div class="card">
+        <p>所有上行 / 下行消息的 PUBLISH 报文统一携带以下 User Properties，供规则引擎与后端路由过滤：</p>
+        <div class="table-wrap"><table>
+          <tr><th>Key</th><th>上行示例</th><th>下行示例</th><th>说明</th></tr>
+          <tr><td>protocol_version</td><td>MQTT-5.0</td><td>MQTT-5.0</td><td>协议版本标记</td></tr>
+          <tr><td>device_type</td><td>bms-zlb005d</td><td>bms-zlb005d</td><td>设备型号</td></tr>
+          <tr><td>msg_type</td><td>heartbeat / data / switch / voltage / gps / alarm / ota_status</td><td>lock / restart / sleep / gps_restart / config / fault_clear / ota / sync</td><td>消息类型（业务路由）</td></tr>
+          <tr><td>request_id</td><td>-</td><td>cmdId（下行唯一）</td><td>请求 ID，便于全链路追踪</td></tr>
+          <tr><td>alarm_level</td><td>fault（告警消息）</td><td>-</td><td>告警级别（可选）</td></tr>
+        </table></div>
+      </div>
+
+      <h3 id="s5-3">5.3 Message Expiry Interval 约定</h3>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <tr><th>消息类型</th><th>Expiry（秒）</th><th>理由</th></tr>
+          <tr><td>心跳 heartbeat</td><td>30</td><td>过期即丢弃，避免离线后积压</td></tr>
+          <tr><td>电池数据 data / switch / voltage / gps</td><td>300</td><td>周期性数据，超过 5 分钟无意义</td></tr>
+          <tr><td>告警 alarm</td><td>600</td><td>重要事件，10 分钟内需处理</td></tr>
+          <tr><td>OTA 状态</td><td>600</td><td>升级任务生命周期内有效</td></tr>
+          <tr><td>注册 register</td><td>120</td><td>注册时效性</td></tr>
+          <tr><td>在线状态 status（保留）</td><td>86400</td><td>状态保留 1 天，过期自动清理</td></tr>
+          <tr><td>下行指令 cmd/*</td><td>30~1800</td><td>指令按 action 设定（默认 30，OTA 1800）</td></tr>
+        </table></div>
+      </div>
+
+      <h3 id="s5-4">5.4 Topic Alias 使用约定</h3>
+      <div class="card">
+        <p>设备可在同一条 TCP 连接内，用 <b>Topic Alias</b> 压缩高频 Topic：首次发布携带完整 Topic 并声明 alias，后续 PUBLISH 只带 alias（节省载荷）。BMS 约定 alias 映射：</p>
+        <div class="table-wrap"><table>
+          <tr><th>Alias</th><th>Topic</th></tr>
+          <tr><td>1</td><td>bms/device/{imei}/heartbeat</td></tr>
+          <tr><td>2</td><td>bms/device/{imei}/data</td></tr>
+          <tr><td>3</td><td>bms/device/{imei}/switch</td></tr>
+          <tr><td>4</td><td>bms/device/{imei}/voltage</td></tr>
+          <tr><td>5</td><td>bms/device/{imei}/gps</td></tr>
+          <tr><td>6</td><td>bms/device/{imei}/alarm</td></tr>
+        </table></div>
+        <div class="warn">Topic Alias 仅对当前连接有效，重连后需重新建立映射；<b>共享订阅不支持 Topic Alias</b>，平台消费端不涉及。</div>
+      </div>
+
+      <h3 id="s5-5">5.5 保留消息（Retained）与在线状态</h3>
+      <div class="card">
+        <p>设备在线状态使用 <b>保留消息</b>：新订阅者立刻收到最后一条状态，无需等待设备心跳：</p>
+<pre class="hl"><code class="lang">/* PUBLISH — 设备上线（在线状态保留）
+   Topic:     bms/device/864114130050327/status
+   QoS:       1
+   Retain:    true  (EMQX 保留该消息，新订阅即收)
+   Message Expiry Interval: 86400s
+   Payload: */
+{
+  "imei": "864114130050327",
+  "online": true,
+  "channel": "mqtt",
+  "ts": "2026-10-08T02:00:00Z"
+}</code></pre>
+        <p>设备异常掉线时，EMQX 发布遗嘱消息（Will）到同一 Topic 并 retain=true：</p>
+<pre class="hl"><code class="lang">/* 遗嘱消息（Will）
+   Will Topic:   bms/device/{imei}/status
+   Will Retain:  true
+   Will QoS:     1
+   Will Delay:   10 秒（网络抖动 10s 内重连则不发布） */
+{
+  "imei": "864114130050327",
+  "online": false,
+  "channel": "will_timeout",
+  "ts": "2026-10-08T02:05:30Z"
+}</code></pre>
+        <div class="danger">平台消费 status 必须使用<b>非共享订阅</b>（保留消息不进入共享订阅）；且订阅时 <b>No Local</b>、<b>Retain Handling=0</b> 以接收保留消息。</div>
+      </div>
+
+      <h3 id="s5-6">5.6 QoS 0 / 1 / 2 完整流程</h3>
+      <div class="card">
+        <h4>QoS 0（心跳）：最多一次</h4>
+        <div class="flow">
+          <span class="pkt">PUBLISH</span> (QoS 0, no ack) ──▶ 丢弃即止，Broker 不确认<br>
+          适用：心跳（允许丢失的高频消息）
+        </div>
+        <h4>QoS 1（指令 / 数据）：至少一次</h4>
+        <div class="flow">
+          <span class="pkt">PUBLISH</span>(QoS 1, PacketID=1) ──▶ <span class="pkt">PUBACK</span>(PID=1, ReasonCode=0x00) ◀──<br>
+          发送方收到 PUBACK 或超时（默认 60s）重发；可能出现重复，需按 msgId / packetId 去重
+        </div>
+        <h4>QoS 2（OTA 指令）：恰好一次（四段握手）</h4>
+        <div class="flow">
+          <span class="pkt">PUBLISH</span>(QoS 2, PID=1) ──▶ <span class="pkt">PUBREC</span>(PID=1, 0x00) ◀──<br>
+          <span class="pkt">PUBREL</span>(PID=1) ──▶ <span class="pkt">PUBCOMP</span>(PID=1, 0x00) ◀──<br>
+          任何一段丢失，接收方按“未收到”重发（PID 复用校验）
+        </div>
+      </div>
+
+      <h3 id="s5-7">5.7 MQTT 5.0 Reason Code 定义（常用）</h3>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <tr><th>Hex</th><th>名称</th><th>适用报文</th><th>说明</th></tr>
+          <tr><td>0x00</td><td>Success</td><td>全部</td><td>成功</td></tr>
+          <tr><td>0x10</td><td>No matching subscribers</td><td>PUBACK/PUBREC</td><td>无匹配订阅者（仅 QoS1）</td></tr>
+          <tr><td>0x80</td><td>Unspecified error</td><td>全部</td><td>未指定错误</td></tr>
+          <tr><td>0x83</td><td>Implementation specific error</td><td>全部</td><td>实现相关错误</td></tr>
+          <tr><td>0x87</td><td>Not authorized</td><td>全部</td><td>未授权（ACL 拒绝）</td></tr>
+          <tr><td>0x89</td><td>Client Identifier not valid</td><td>CONNACK</td><td>ClientID 不合法</td></tr>
+          <tr><td>0x8D</td><td>Client Identifier not valid</td><td>CONNACK</td><td>（0x8D 为兼容码）</td></tr>
+          <tr><td>0x90</td><td>Topic Name invalid</td><td>PUBACK/PUBREC/SUBACK</td><td>Topic 非法</td></tr>
+          <tr><td>0x91</td><td>Packet Identifier in use</td><td>PUBACK/PUBREC</td><td>PacketID 重复使用</td></tr>
+          <tr><td>0x97</td><td>Quota exceeded</td><td>PUBACK/SUBACK</td><td>超过配额（限流）</td></tr>
+          <tr><td>0x99</td><td>Payload format invalid</td><td>PUBACK</td><td>Payload 格式错误</td></tr>
+          <tr><td>0x9A</td><td>Retain not supported</td><td>PUBACK</td><td>不支持保留消息</td></tr>
+          <tr><td>0x9B</td><td>QoS not supported</td><td>PUBACK/SUBACK</td><td>QoS 超出上限</td></tr>
+          <tr><td>0x9C</td><td>Use another server</td><td>CONNACK/DISCONNECT</td><td>请连接 Server Reference 指定节点</td></tr>
+          <tr><td>0x9F</td><td>Shared subscriptions not supported</td><td>SUBACK</td><td>不支持共享订阅</td></tr>
+          <tr><td>0xA1</td><td>Connection rate exceeded</td><td>CONNACK/DISCONNECT</td><td>连接速率超限</td></tr>
+          <tr><td>0xA2</td><td>Maximum connect time</td><td>DISCONNECT</td><td>连接时长限制</td></tr>
+          <tr><td>0xA4</td><td>Wildcard subscriptions not supported</td><td>SUBACK</td><td>不支持通配订阅</td></tr>
+        </table></div>
+      </div>
+
+      <h3 id="s5-8">5.8 请求-响应模式（Request / Response）</h3>
+      <div class="card">
+        <p>下行指令统一使用 MQTT 5.0 内置请求-响应模式，实现指令与响应关联：</p>
+        <div class="table-wrap"><table>
+          <tr><th>要素</th><th>实现</th><th>说明</th></tr>
+          <tr><td>Response Topic</td><td>PUBLISH 属性 0x08</td><td>固定 <code>bms/device/{imei}/resp</code>，设备直接向该 Topic 发响应</td></tr>
+          <tr><td>Correlation Data</td><td>PUBLISH 属性 0x09</td><td>携带 <code>cmdId</code>（UTF-8 编码），设备响应原样带回，平台据此匹配</td></tr>
+          <tr><td>Request Problem Info</td><td>CONNECT 属性</td><td>请求 1 后服务端可返回 Reason String</td></tr>
+        </table></div>
+<pre class="hl"><code class="lang">// 平台 → 设备（请求）
+Topic: bms/device/864114130050327/cmd/lock
+PUBLISH Properties:
+  Response Topic   = bms/device/864114130050327/resp
+  Correlation Data = "cmd-20261008-lock-001"
+  Message Expiry   = 30
+  User Properties  = {protocol_version: MQTT-5.0, device_type: bms-zlb005d, msg_type: lock, request_id: cmd-20261008-lock-001}
+
+// 设备 → 平台（响应）
+Topic: bms/device/864114130050327/resp
+PUBLISH Properties:
+  Correlation Data = "cmd-20261008-lock-001"   (原样带回)
+  Message Expiry   = 30
+  User Properties  = {msg_type: resp, request_id: cmd-20261008-lock-001}</code></pre>
+        <div class="note">平台在发送指令后，若在 <code>timeout</code>（默认30s）内未收到带相同 Correlation Data 的响应，判定指令超时。典型响应延迟：≤3s。</div>
+      </div>
+
+      <!-- ====================== 6. 上行消息 ====================== -->
+      <h2 id="s6">6. 上行消息（设备 → 平台）</h2>
+      <p>所有上行消息均为设备 PUBLISH，消息头部属性按第 5 章约定。以下每类消息给出「MQTT 5.0 属性头」与「JSON 示例（含属性注释）」。</p>
+
+      <!-- 6.1 -->
+      <h3 id="s6-1">6.1 设备注册 <span class="tag tag-up">上行</span></h3>
+      <div class="card">
+        <div class="msg-head">
+          <b>Topic：</b><code>bms/device/{imei}/register</code>　<b>QoS：</b>1　<b>Retain：</b>false
+          <div class="kv"><b>Message Expiry：</b>120s</div>
+          <div class="kv"><b>Content Type：</b>application/json</div>
+          <div class="kv"><b>User Properties：</b><span class="tp">protocol_version=MQTT-5.0</span> <span class="tp">device_type=bms-zlb005d</span> <span class="tp">msg_type=register</span></div>
+        </div>
+        <p>设备首次上线或重新连接时发送注册消息，上报设备基础信息。平台以 IMEI 为唯一设备标识入库。</p>
+        <div class="table-wrap"><table class="field-table">
+          <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+          <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备 IMEI（15 位）</td></tr>
+          <tr><td>imsi</td><td>String</td><td class="req">是</td><td>SIM 卡 IMSI</td></tr>
+          <tr><td>deviceType</td><td>String</td><td class="req">是</td><td>设备型号，如 ZLB005D1507000_00</td></tr>
+          <tr><td>productType</td><td>String</td><td class="req">是</td><td>产品类型（家庭储能BMS / 铅改锂储能BMS）</td></tr>
+          <tr><td>batteryType</td><td>String</td><td class="req">是</td><td>电池类型（磷酸铁锂 / 三元锂）</td></tr>
+          <tr><td>batteryStrings</td><td>Integer</td><td class="req">是</td><td>电池串数</td></tr>
+          <tr><td>hwVersion</td><td>String</td><td class="req">是</td><td>硬件版本，如 AB3000X_H15S64Ah</td></tr>
+          <tr><td>swVersion</td><td>String</td><td class="req">是</td><td>软件版本，如 ZLB005D-V2.3.1</td></tr>
+          <tr><td>sysVersion</td><td>String</td><td class="req">是</td><td>系统版本，如 F0-AB3000X-VR2025042</td></tr>
+          <tr><td>protocolVersion</td><td>String</td><td class="req">是</td><td>协议版本，如 V2.0</td></tr>
+          <tr><td>msgId</td><td>String</td><td class="req">是</td><td>消息唯一 ID（UUID），用于去重</td></tr>
+          <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>ISO8601（UTC）</td></tr>
+        </table></div>
+        <h4>JSON 示例</h4>
+<pre class="hl"><code class="lang-json">/* ── MQTT 5.0 PUBLISH 属性 ──────────────────────────────
+   Topic:                       bms/device/864114130050327/register
+   QoS:                         1
+   Retain:                      false
+   Payload Format Indicator:    1 (UTF-8)
+   Content Type:                application/json
+   Message Expiry Interval:     120s
+   Topic Alias:                 0 (不启用)
+   User Properties:             protocol_version=MQTT-5.0,
+                                device_type=bms-zlb005d,
+                                msg_type=register
+──────────────────────────────────────────────────────── */
+{
+  "imei": "864114130050327",
+  "imsi": "999010000000000",
+  "deviceType": "ZLB005D1507000_00",
+  "productType": "家庭储能BMS",
+  "batteryType": "磷酸铁锂",
+  "batteryStrings": 16,
+  "hwVersion": "AB3000X_H15S64Ah",
+  "swVersion": "ZLB005D-V2.3.1",
+  "sysVersion": "F0-AB3000X-VR2025042",
+  "protocolVersion": "V2.0",
+  "msgId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "timestamp": "2026-10-08T02:00:00Z"
+}</code></pre>
+      </div>
+
+      <!-- 6.2 -->
+      <h3 id="s6-2">6.2 心跳上报 <span class="tag tag-up">上行</span></h3>
+      <div class="card">
+        <div class="msg-head">
+          <b>Topic：</b><code>bms/device/{imei}/heartbeat</code>　<b>QoS：</b>0　<b>Retain：</b>false
+          <div class="kv"><b>Message Expiry：</b>30s</div>
+          <div class="kv"><b>User Properties：</b><span class="tp">protocol_version=MQTT-5.0</span> <span class="tp">device_type=bms-zlb005d</span> <span class="tp">msg_type=heartbeat</span></div>
+        </div>
+        <p>心跳间隔默认 60 秒（可平台配置）。心跳消息 QoS=0 允许丢失，且 Message Expiry 30 秒防止离线积压。</p>
+        <div class="table-wrap"><table class="field-table">
+          <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+          <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备 IMEI</td></tr>
+          <tr><td>online</td><td>Boolean</td><td class="req">是</td><td>true（设备在线）</td></tr>
+          <tr><td>soc</td><td>Float</td><td class="opt">否</td><td>当前 SOC(%)，0-100</td></tr>
+          <tr><td>totalVoltage</td><td>Float</td><td class="opt">否</td><td>总电压(V)</td></tr>
+          <tr><td>current</td><td>Float</td><td class="opt">否</td><td>电流(A)，正=充电，负=放电</td></tr>
+          <tr><td>deviceStatus</td><td>String</td><td class="req">是</td><td>online / working / sleep / locked</td></tr>
+          <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>心跳时间（UTC）</td></tr>
+        </table></div>
+        <h4>JSON 示例</h4>
+<pre class="hl"><code class="lang-json">/* ── MQTT 5.0 PUBLISH 属性 ──────────────────────────────
+   Topic:                bms/device/864114130050327/heartbeat
+   QoS:                  0
+   Retain:               false
+   Message Expiry:       30s          ← 心跳消息 30 秒过期
+   User Properties:      protocol_version=MQTT-5.0
+                         device_type=bms-zlb005d
+                         msg_type=heartbeat
+──────────────────────────────────────────────────────── */
+{
+  "imei": "864114130050327",
+  "online": true,
+  "soc": 85.5,
+  "totalVoltage": 52.3,
+  "current": 10.2,
+  "deviceStatus": "working",
+  "timestamp": "2026-10-08T02:01:00Z"
+}</code></pre>
+      </div>
+
+      <!-- 6.3 -->
+      <h3 id="s6-3">6.3 电池实时数据上报 <span class="tag tag-up">上行</span></h3>
+      <div class="card">
+        <div class="msg-head">
+          <b>Topic：</b><code>bms/device/{imei}/data</code>　<b>QoS：</b>1　<b>Retain：</b>false
+          <div class="kv"><b>Message Expiry：</b>300s</div>
+          <div class="kv"><b>User Properties：</b><span class="tp">protocol_version=MQTT-5.0</span> <span class="tp">device_type=bms-zlb005d</span> <span class="tp">msg_type=data</span></div>
+        </div>
+        <p>周期性上报（默认 30 秒可配），平台按此入库并驱动看板实时曲线。</p>
+        <div class="table-wrap"><table class="field-table">
+          <tr><th>字段</th><th>类型</th><th>必填</th><th>单位</th><th>说明</th></tr>
+          <tr><td>imei</td><td>String</td><td class="req">是</td><td>-</td><td>设备 IMEI</td></tr>
+          <tr><td>msgId</td><td>String</td><td class="req">是</td><td>-</td><td>消息唯一 ID</td></tr>
+          <tr><td>totalVoltage</td><td>Float</td><td class="req">是</td><td>V</td><td>总电压</td></tr>
+          <tr><td>totalVoltageMv</td><td>Integer</td><td class="req">是</td><td>mV</td><td>总电压（毫伏，运维列表展示）</td></tr>
+          <tr><td>current</td><td>Float</td><td class="req">是</td><td>A</td><td>电流，正=充电 负=放电</td></tr>
+          <tr><td>soc</td><td>Float</td><td class="req">是</td><td>%</td><td>剩余电量 0-100</td></tr>
+          <tr><td>soh</td><td>Float</td><td class="req">是</td><td>%</td><td>健康度 0-100</td></tr>
+          <tr><td>cycleCount</td><td>Integer</td><td class="req">是</td><td>次</td><td>循环次数</td></tr>
+          <tr><td>mosTemp</td><td>Float</td><td class="req">是</td><td>℃</td><td>MOS 温度</td></tr>
+          <tr><td>heatTemp</td><td>Float</td><td class="req">是</td><td>℃</td><td>加热温度</td></tr>
+          <tr><td>batteryTemp</td><td>Float</td><td class="req">是</td><td>℃</td><td>电池温度</td></tr>
+          <tr><td>batteryTempMax / Min</td><td>Float</td><td class="opt">否</td><td>℃</td><td>最高 / 最低单体温度</td></tr>
+          <tr><td>protectionStatus</td><td>Integer</td><td class="req">是</td><td>-</td><td>保护状态位（12.1.3）</td></tr>
+          <tr><td>systemFault</td><td>Integer</td><td class="req">是</td><td>-</td><td>系统故障位（12.1.4）</td></tr>
+          <tr><td>dailyMileage</td><td>Integer</td><td class="opt">否</td><td>米</td><td>当天里程（移动设备）</td></tr>
+          <tr><td>remainingCapacity</td><td>Float</td><td class="opt">否</td><td>Ah</td><td>剩余容量</td></tr>
+          <tr><td>ratedCapacity</td><td>Float</td><td class="opt">否</td><td>Ah</td><td>额定容量</td></tr>
+          <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>-</td><td>采集时间（UTC）</td></tr>
+        </table></div>
+        <h4>JSON 示例</h4>
+<pre class="hl"><code class="lang-json">/* ── MQTT 5.0 PUBLISH 属性 ──────────────────────────────
+   Topic:        bms/device/864114130050327/data
+   QoS:          1
+   Retain:       false
+   Message Expiry: 300 seconds  ← 电池数据 5 分钟过期
+   User Properties: protocol_version=MQTT-5.0
+                    device_type=bms-zlb005d
+                    msg_type=data
+──────────────────────────────────────────────────────── */
+{
+  "imei": "864114130050327",
+  "msgId": "d4e5f6a7-b8c9-0123-4567-89abcdef0123",
+  "totalVoltage": 52.3,
+  "totalVoltageMv": 52300,
+  "current": 10.2,
+  "soc": 85.5,
+  "soh": 92.0,
+  "cycleCount": 328,
+  "mosTemp": 35.2,
+  "heatTemp": 25.0,
+  "batteryTemp": 28.5,
+  "batteryTempMax": 29.1,
+  "batteryTempMin": 27.8,
+  "protectionStatus": 0,
+  "systemFault": 0,
+  "remainingCapacity": 85.5,
+  "ratedCapacity": 100.0,
+  "timestamp": "2026-10-08T02:01:30Z"
+}</code></pre>
+      </div>
+
+      <!-- 6.4 -->
+      <h3 id="s6-4">6.4 开关状态上报 <span class="tag tag-up">上行</span></h3>
+      <div class="card">
+        <div class="msg-head">
+          <b>Topic：</b><code>bms/device/{imei}/switch</code>　<b>QoS：</b>1　<b>Retain：</b>false
+          <div class="kv"><b>Message Expiry：</b>300s</div>
+          <div class="kv"><b>User Properties：</b><span class="tp">protocol_version=MQTT-5.0</span> <span class="tp">device_type=bms-zlb005d</span> <span class="tp">msg_type=switch</span></div>
+        </div>
+        <p>上报各开关实时状态，可与电池数据同步或独立上报。</p>
+        <div class="table-wrap"><table class="field-table">
+          <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+          <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备 IMEI</td></tr>
+          <tr><td>msgId</td><td>String</td><td class="req">是</td><td>消息唯一 ID</td></tr>
+          <tr><td>chargeSwitch</td><td>Boolean</td><td class="req">是</td><td>充电开关</td></tr>
+          <tr><td>dischargeSwitch</td><td>Boolean</td><td class="req">是</td><td>放电开关</td></tr>
+          <tr><td>heatSwitch</td><td>Boolean</td><td class="req">是</td><td>加热开关</td></tr>
+          <tr><td>preChargeSwitch</td><td>Boolean</td><td class="req">是</td><td>预充开关</td></tr>
+          <tr><td>currentLimitSwitch</td><td>Boolean</td><td class="req">是</td><td>限流开关</td></tr>
+          <tr><td>balanceSwitch</td><td>Boolean</td><td class="req">是</td><td>均衡开关</td></tr>
+          <tr><td>bluetoothSwitch</td><td>Boolean</td><td class="req">是</td><td>蓝牙开关</td></tr>
+          <tr><td>parallelChargeSwitch</td><td>Boolean</td><td class="req">是</td><td>并充开关</td></tr>
+          <tr><td>parallelDischargeSwitch</td><td>Boolean</td><td class="req">是</td><td>并放开关</td></tr>
+          <tr><td>ledSwitch</td><td>Boolean</td><td class="req">是</td><td>LED 开关</td></tr>
+          <tr><td>chargerSwitch</td><td>Boolean</td><td class="req">是</td><td>充电机开关</td></tr>
+          <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>状态采集时间（UTC）</td></tr>
+        </table></div>
+        <h4>JSON 示例</h4>
+<pre class="hl"><code class="lang-json">/* ── MQTT 5.0 PUBLISH 属性 ──────────────────────────────
+   Topic:        bms/device/864114130050327/switch
+   QoS:          1
+   Message Expiry:   300s
+   User Properties:  protocol_version=MQTT-5.0, device_type=bms-zlb005d, msg_type=switch
+──────────────────────────────────────────────────────── */
+{
+  "imei": "864114130050327",
+  "msgId": "e5f6a7b8-c9d0-1234-5678-9abcdef01234",
+  "chargeSwitch": true,
+  "dischargeSwitch": true,
+  "heatSwitch": false,
+  "preChargeSwitch": false,
+  "currentLimitSwitch": false,
+  "balanceSwitch": true,
+  "bluetoothSwitch": false,
+  "parallelChargeSwitch": false,
+  "parallelDischargeSwitch": false,
+  "ledSwitch": true,
+  "chargerSwitch": true,
+  "timestamp": "2026-10-08T02:01:30Z"
+}</code></pre>
+      </div>
+
+      <!-- 6.5 -->
+      <h3 id="s6-5">6.5 单体电压上报 <span class="tag tag-up">上行</span></h3>
+      <div class="card">
+        <div class="msg-head">
+          <b>Topic：</b><code>bms/device/{imei}/voltage</code>　<b>QoS：</b>1　<b>Retain：</b>false
+          <div class="kv"><b>Message Expiry：</b>300s</div>
+          <div class="kv"><b>User Properties：</b><span class="tp">protocol_version=MQTT-5.0</span> <span class="tp">device_type=bms-zlb005d</span> <span class="tp">msg_type=voltage</span></div>
+        </div>
+        <p>上报各串单体电压及最高/最低/压差，支撑均衡与一致性分析。</p>
+        <div class="table-wrap"><table class="field-table">
+          <tr><th>字段</th><th>类型</th><th>必填</th><th>单位</th><th>说明</th></tr>
+          <tr><td>imei</td><td>String</td><td class="req">是</td><td>-</td><td>设备 IMEI</td></tr>
+          <tr><td>msgId</td><td>String</td><td class="req">是</td><td>-</td><td>消息唯一 ID</td></tr>
+          <tr><td>cellCount</td><td>Integer</td><td class="req">是</td><td>-</td><td>电池串数</td></tr>
+          <tr><td>cellVoltages</td><td>Integer[]</td><td class="req">是</td><td>mV</td><td>各串电压数组（长度=cellCount）</td></tr>
+          <tr><td>maxVoltage</td><td>Integer</td><td class="req">是</td><td>mV</td><td>最高单体电压</td></tr>
+          <tr><td>minVoltage</td><td>Integer</td><td class="req">是</td><td>mV</td><td>最低单体电压</td></tr>
+          <tr><td>voltageDiff</td><td>Integer</td><td class="req">是</td><td>mV</td><td>压差（最高-最低）</td></tr>
+          <tr><td>maxVoltageIndex</td><td>Integer</td><td class="req">是</td><td>-</td><td>最高电压串号（从1开始）</td></tr>
+          <tr><td>minVoltageIndex</td><td>Integer</td><td class="req">是</td><td>-</td><td>最低电压串号（从1开始）</td></tr>
+          <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>-</td><td>采集时间（UTC）</td></tr>
+        </table></div>
+        <h4>JSON 示例</h4>
+<pre class="hl"><code class="lang-json">/* ── MQTT 5.0 PUBLISH 属性 ──────────────────────────────
+   Topic:        bms/device/864114130050327/voltage
+   QoS:          1
+   Message Expiry:   300s
+   User Properties:  protocol_version=MQTT-5.0, device_type=bms-zlb005d, msg_type=voltage
+──────────────────────────────────────────────────────── */
+{
+  "imei": "864114130050327",
+  "msgId": "f6a7b8c9-d0e1-2345-6789-abcdef012345",
+  "cellCount": 16,
+  "cellVoltages": [3265, 3268, 3270, 3263, 3271, 3269, 3267, 3264, 3272, 3266, 3265, 3268, 3270, 3263, 3269, 3271],
+  "maxVoltage": 3272,
+  "minVoltage": 3263,
+  "voltageDiff": 9,
+  "maxVoltageIndex": 9,
+  "minVoltageIndex": 4,
+  "timestamp": "2026-10-08T02:01:30Z"
+}</code></pre>
+      </div>
+
+      <!-- 6.6 -->
+      <h3 id="s6-6">6.6 GPS 定位上报 <span class="tag tag-up">上行</span></h3>
+      <div class="card">
+        <div class="msg-head">
+          <b>Topic：</b><code>bms/device/{imei}/gps</code>　<b>QoS：</b>1　<b>Retain：</b>false
+          <div class="kv"><b>Message Expiry：</b>300s</div>
+          <div class="kv"><b>User Properties：</b><span class="tp">protocol_version=MQTT-5.0</span> <span class="tp">device_type=bms-zlb005d</span> <span class="tp">msg_type=gps</span></div>
+        </div>
+        <p>移动设备实时上报（默认30s），固定设备可低频（如300s）。</p>
+        <div class="table-wrap"><table class="field-table">
+          <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+          <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备 IMEI</td></tr>
+          <tr><td>msgId</td><td>String</td><td class="req">是</td><td>消息唯一 ID</td></tr>
+          <tr><td>latitude</td><td>Double</td><td class="req">是</td><td>纬度，WGS84，6 位小数</td></tr>
+          <tr><td>longitude</td><td>Double</td><td class="req">是</td><td>经度，WGS84，6 位小数</td></tr>
+          <tr><td>altitude</td><td>Double</td><td class="opt">否</td><td>海拔（米）</td></tr>
+          <tr><td>speed</td><td>Float</td><td class="opt">否</td><td>速度（km/h）</td></tr>
+          <tr><td>direction</td><td>Float</td><td class="opt">否</td><td>方向角（0-360）</td></tr>
+          <tr><td>gpsAccuracy</td><td>Float</td><td class="opt">否</td><td>定位精度（米）</td></tr>
+          <tr><td>satelliteCount</td><td>Integer</td><td class="opt">否</td><td>卫星数</td></tr>
+          <tr><td>gpsStatus</td><td>Integer</td><td class="req">是</td><td>0=未定位 1=已定位 2=模块异常</td></tr>
+          <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>定位时间（UTC）</td></tr>
+        </table></div>
+        <h4>JSON 示例</h4>
+<pre class="hl"><code class="lang-json">/* ── MQTT 5.0 PUBLISH 属性 ──────────────────────────────
+   Topic:        bms/device/864114130050327/gps
+   QoS:          1
+   Message Expiry:   300s
+   User Properties:  protocol_version=MQTT-5.0, device_type=bms-zlb005d, msg_type=gps
+──────────────────────────────────────────────────────── */
+{
+  "imei": "864114130050327",
+  "msgId": "a7b8c9d0-e1f2-3456-7890-bcdef0123456",
+  "latitude": 32.391231,
+  "longitude": 119.434246,
+  "altitude": 35.2,
+  "speed": 0.0,
+  "direction": 0,
+  "gpsAccuracy": 5.0,
+  "satelliteCount": 12,
+  "gpsStatus": 1,
+  "timestamp": "2026-10-08T02:01:30Z"
+}</code></pre>
+      </div>
+
+      <!-- 6.7 -->
+      <h3 id="s6-7">6.7 告警 / 故障上报 <span class="tag tag-up">上行</span></h3>
+      <div class="card">
+        <div class="msg-head">
+          <b>Topic：</b><code>bms/device/{imei}/alarm</code>　<b>QoS：</b>1　<b>Retain：</b>false
+          <div class="kv"><b>Message Expiry：</b>600s</div>
+          <div class="kv"><b>User Properties：</b><span class="tp">protocol_version=MQTT-5.0</span> <span class="tp">device_type=bms-zlb005d</span> <span class="tp">msg_type=alarm</span> <span class="tp">alarm_level=fault</span></div>
+        </div>
+        <p>告警产生（trigger）与恢复（recover）两种事件，告警码定义见第 11 章。</p>
+        <div class="table-wrap"><table class="field-table">
+          <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+          <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备 IMEI</td></tr>
+          <tr><td>msgId</td><td>String</td><td class="req">是</td><td>消息唯一 ID</td></tr>
+          <tr><td>alarmType</td><td>String</td><td class="req">是</td><td>告警类型名称（温度告警/电流告警/电压告警…）</td></tr>
+          <tr><td>alarmCode</td><td>Integer</td><td class="req">是</td><td>告警码（第 11 章）</td></tr>
+          <tr><td>alarmLevel</td><td>String</td><td class="req">是</td><td>warning / fault / critical</td></tr>
+          <tr><td>alarmEvent</td><td>String</td><td class="req">是</td><td>trigger / recover</td></tr>
+          <tr><td>alarmDesc</td><td>String</td><td class="req">是</td><td>告警描述</td></tr>
+          <tr><td>currentValues</td><td>Object</td><td class="opt">否</td><td>触发时关键数据快照</td></tr>
+          <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>告警时间（UTC）</td></tr>
+        </table></div>
+        <h4>JSON 示例 — 充电机高温故障（trigger）</h4>
+<pre class="hl"><code class="lang-json">/* ── MQTT 5.0 PUBLISH 属性 ──────────────────────────────
+   Topic:        bms/device/867584030010156/alarm
+   QoS:          1
+   Message Expiry:   600s  ← 告警 10 分钟过期
+   User Properties:  protocol_version=MQTT-5.0, device_type=bms-zlb005d,
+                     msg_type=alarm, alarm_level=fault
+──────────────────────────────────────────────────────── */
+{
+  "imei": "867584030010156",
+  "msgId": "b8c9d0e1-f2a3-4567-8901-cdef01234567",
+  "alarmType": "温度告警",
+  "alarmCode": 201,
+  "alarmLevel": "fault",
+  "alarmEvent": "trigger",
+  "alarmDesc": "充电机高温故障",
+  "currentValues": {
+    "chargerTemp": 68.5,
+    "threshold": 65
   },
-  <span class="key">"timestamp"</span>: <span class="str">"2026-05-21T14:17:18Z"</span>
-}</pre>
-  <h4>示例 — 限流故障恢复</h4>
-  <pre>{
-  <span class="key">"imei"</span>: <span class="str">"867584030010155"</span>,
-  <span class="key">"msgId"</span>: <span class="str">"c9d0e1f2-a3b4-5678-9012-def012345678"</span>,
-  <span class="key">"alarmType"</span>: <span class="str">"电流告警"</span>,
-  <span class="key">"alarmCode"</span>: <span class="num">105</span>,
-  <span class="key">"alarmLevel"</span>: <span class="str">"fault"</span>,
-  <span class="key">"alarmEvent"</span>: <span class="str">"recover"</span>,
-  <span class="key">"alarmDesc"</span>: <span class="str">"限流故障已恢复"</span>,
-  <span class="key">"timestamp"</span>: <span class="str">"2026-05-21T14:20:18Z"</span>
-}</pre>
-</div>
+  "timestamp": "2026-10-08T06:17:18Z"
+}</code></pre>
+        <h4>JSON 示例 — 故障恢复（recover）</h4>
+<pre class="hl"><code class="lang-json">{
+  "imei": "867584030010155",
+  "msgId": "c9d0e1f2-a3b4-5678-9012-def012345678",
+  "alarmType": "电流告警",
+  "alarmCode": 105,
+  "alarmLevel": "fault",
+  "alarmEvent": "recover",
+  "alarmDesc": "限流故障已恢复",
+  "timestamp": "2026-10-08T06:20:18Z"
+}</code></pre>
+      </div>
 
-<!-- 5.8 OTA状态 -->
-<h3 id="s5-8">5.8 OTA升级状态上报 <span class="tag tag-up">上行</span></h3>
-<div class="card">
-  <p><b>Topic：</b><code>bms/device/{imei}/ota/status</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
-  <p>设备执行OTA升级时上报进度和结果状态。</p>
-  <h4>请求字段</h4>
-  <table class="field-table">
-    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
-    <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备IMEI号</td></tr>
-    <tr><td>taskId</td><td>String</td><td class="req">是</td><td>升级任务ID（由OTA指令下发时分配）</td></tr>
-    <tr><td>otaStatus</td><td>String</td><td class="req">是</td><td>升级状态：downloading/installing/success/failed/rollback</td></tr>
-    <tr><td>progress</td><td>Integer</td><td class="req">是</td><td>升级进度百分比，0-100</td></tr>
-    <tr><td>firmwareVersion</td><td>String</td><td class="opt">否</td><td>目标固件版本</td></tr>
-    <tr><td>errorCode</td><td>Integer</td><td class="opt">否</td><td>失败错误码（status=failed时填写）</td></tr>
-    <tr><td>errorMsg</td><td>String</td><td class="opt">否</td><td>失败原因描述</td></tr>
-    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>状态时间</td></tr>
-  </table>
-  <h4>示例 — 升级中</h4>
-  <pre>{
-  <span class="key">"imei"</span>: <span class="str">"864114070050327"</span>,
-  <span class="key">"taskId"</span>: <span class="str">"ota-20260918-001"</span>,
-  <span class="key">"otaStatus"</span>: <span class="str">"installing"</span>,
-  <span class="key">"progress"</span>: <span class="num">45</span>,
-  <span class="key">"firmwareVersion"</span>: <span class="str">"V2.3.1"</span>,
-  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T09:15:00Z"</span>
-}</pre>
-  <h4>示例 — 升级成功</h4>
-  <pre>{
-  <span class="key">"imei"</span>: <span class="str">"864114070050327"</span>,
-  <span class="key">"taskId"</span>: <span class="str">"ota-20260918-001"</span>,
-  <span class="key">"otaStatus"</span>: <span class="str">"success"</span>,
-  <span class="key">"progress"</span>: <span class="num">100</span>,
-  <span class="key">"firmwareVersion"</span>: <span class="str">"V2.3.1"</span>,
-  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T09:25:00Z"</span>
-}</pre>
-</div>
+      <!-- 6.8 -->
+      <h3 id="s6-8">6.8 OTA 升级状态上报 <span class="tag tag-up">上行</span></h3>
+      <div class="card">
+        <div class="msg-head">
+          <b>Topic：</b><code>bms/device/{imei}/ota/status</code>　<b>QoS：</b>1　<b>Retain：</b>false
+          <div class="kv"><b>Message Expiry：</b>600s</div>
+          <div class="kv"><b>User Properties：</b><span class="tp">protocol_version=MQTT-5.0</span> <span class="tp">device_type=bms-zlb005d</span> <span class="tp">msg_type=ota_status</span></div>
+        </div>
+        <p>OTA 任务执行过程上报进度与结果（downloading / installing / success / failed / rollback）。</p>
+        <div class="table-wrap"><table class="field-table">
+          <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+          <tr><td>imei</td><td>String</td><td class="req">是</td><td>设备 IMEI</td></tr>
+          <tr><td>taskId</td><td>String</td><td class="req">是</td><td>升级任务 ID（OTA 指令下发）</td></tr>
+          <tr><td>otaStatus</td><td>String</td><td class="req">是</td><td>downloading / installing / success / failed / rollback</td></tr>
+          <tr><td>progress</td><td>Integer</td><td class="req">是</td><td>进度 0-100</td></tr>
+          <tr><td>firmwareVersion</td><td>String</td><td class="opt">否</td><td>目标固件版本</td></tr>
+          <tr><td>errorCode</td><td>Integer</td><td class="opt">否</td><td>失败码（failed 时）</td></tr>
+          <tr><td>errorMsg</td><td>String</td><td class="opt">否</td><td>失败描述</td></tr>
+          <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>状态时间（UTC）</td></tr>
+        </table></div>
+        <h4>JSON 示例</h4>
+<pre class="hl"><code class="lang-json">/* ── MQTT 5.0 PUBLISH 属性 ──────────────────────────────
+   Topic:        bms/device/864114130050327/ota/status
+   QoS:          1
+   Message Expiry:   600s
+   User Properties:  protocol_version=MQTT-5.0, device_type=bms-zlb005d, msg_type=ota_status
+──────────────────────────────────────────────────────── */
+{
+  "imei": "864114130050327",
+  "taskId": "ota-20261008-001",
+  "otaStatus": "installing",
+  "progress": 45,
+  "firmwareVersion": "V2.4.0",
+  "timestamp": "2026-10-08T09:15:00Z"
+}</code></pre>
+        <h4>示例 — 升级成功</h4>
+<pre class="hl"><code class="lang-json">{
+  "imei": "864114130050327",
+  "taskId": "ota-20261008-001",
+  "otaStatus": "success",
+  "progress": 100,
+  "firmwareVersion": "V2.4.0",
+  "timestamp": "2026-10-08T09:25:00Z"
+}</code></pre>
+      </div>
 
-<!-- ====== 6. 下行消息 ====== -->
-<h2 id="s6">6. 下行消息（平台→设备）</h2>
+      <!-- ====================== 7. 下行消息 ====================== -->
+      <h2 id="s7">7. 下行消息（平台 → 设备）</h2>
+      <p>所有下行指令统一使用 <b>MQTT 5.0 请求-响应模式</b>：PUBLISH 携带 <code>Response Topic</code> 与 <code>Correlation Data</code>，设备执行后向 Response Topic 发布响应（Correlation Data 原样带回），平台据此关联超时与重试。指令公共字段：</p>
+      <div class="card">
+        <div class="table-wrap"><table class="field-table">
+          <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+          <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>指令唯一 ID（UUID / 业务流水）</td></tr>
+          <tr><td>action</td><td>String</td><td class="req">是</td><td>指令动作：lock / unlock / restart / sleep / wake / gps_restart / config / fault_clear / ota / sync</td></tr>
+          <tr><td>params</td><td>Object</td><td class="opt">否</td><td>指令参数（按 action 不同）</td></tr>
+          <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>下发时间（UTC）</td></tr>
+          <tr><td>timeout</td><td>Integer</td><td class="opt">否</td><td>响应超时（秒），默认 30</td></tr>
+        </table></div>
+        <div class="msg-head">
+          <b>请求-响应约定：</b>
+          <div class="kv"><b>Response Topic：</b><code>bms/device/{imei}/resp</code></div>
+          <div class="kv"><b>Correlation Data：</b>UTF-8 编码的 <code>cmdId</code>，设备原样带回</div>
+          <div class="kv"><b>响应载荷：</b>{ "cmdId": "...", "code": 0, "message": "...", "data": {...}, "timestamp": "..." }</div>
+        </div>
+      </div>
 
-<!-- 6.1 设备锁定/解锁 -->
-<h3 id="s6-1">6.1 设备锁定/解锁 <span class="tag tag-down">下行</span></h3>
-<div class="card">
-  <p><b>Topic：</b><code>bms/device/{imei}/cmd/lock</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
-  <p>平台下发设备锁定或解锁指令。锁定后设备停止充放电，解锁后恢复正常。</p>
-  <h4>指令参数</h4>
-  <table class="field-table">
-    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
-    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>指令唯一ID</td></tr>
-    <tr><td>action</td><td>String</td><td class="req">是</td><td>固定值：<code>lock</code></td></tr>
-    <tr><td>params.lockState</td><td>String</td><td class="req">是</td><td>目标状态：<code>locked</code>（锁定）/ <code>unlocked</code>（解锁）</td></tr>
-    <tr><td>params.operator</td><td>String</td><td class="req">是</td><td>操作人用户名</td></tr>
-    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>下发时间</td></tr>
-    <tr><td>timeout</td><td>Integer</td><td class="opt">否</td><td>超时时间（秒），默认30</td></tr>
-  </table>
-  <h4>示例</h4>
-  <pre>{
-  <span class="key">"cmdId"</span>: <span class="str">"cmd-20260918-lock-001"</span>,
-  <span class="key">"action"</span>: <span class="str">"lock"</span>,
-  <span class="key">"params"</span>: {
-    <span class="key">"lockState"</span>: <span class="str">"locked"</span>,
-    <span class="key">"operator"</span>: <span class="str">"admin"</span>
+      <!-- 7.1 -->
+      <h3 id="s7-1">7.1 设备锁定 / 解锁 <span class="tag tag-down">下行</span></h3>
+      <div class="card">
+        <div class="msg-head">
+          <b>Topic：</b><code>bms/device/{imei}/cmd/lock</code>　<b>QoS：</b>1
+          <div class="kv"><b>Message Expiry：</b>30s</div>
+          <div class="kv"><b>Response Topic：</b><code>bms/device/{imei}/resp</code></div>
+          <div class="kv"><b>Correlation Data：</b>cmdId</div>
+          <div class="kv"><b>User Properties：</b><span class="down">protocol_version=MQTT-5.0</span> <span class="down">device_type=bms-zlb005d</span> <span class="down">msg_type=lock</span> <span class="down">request_id={cmdId}</span></div>
+        </div>
+        <p>锁定后设备停止充放电，解锁恢复正常。设备执行完成后向 resp 发布响应。</p>
+        <h4>指令载荷</h4>
+<pre class="hl"><code class="lang-json">/* ── MQTT 5.0 PUBLISH 属性 ──────────────────────────────
+   Topic:            bms/device/864114130050327/cmd/lock
+   QoS:              1
+   Message Expiry:   30s
+   Response Topic:   bms/device/864114130050327/resp
+   Correlation Data: base64("cmd-20261008-001")
+   User Properties:  {protocol_version: MQTT-5.0, device_type: bms-zlb005d,
+                      msg_type: lock, request_id: cmd-20261008-001}
+──────────────────────────────────────────────────────── */
+{
+  "cmdId": "cmd-20261008-001",
+  "action": "lock",
+  "params": {
+    "lockState": "locked",
+    "operator": "admin"
   },
-  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T10:00:00Z"</span>,
-  <span class="key">"timeout"</span>: <span class="num">30</span>
-}</pre>
-  <h4>设备响应</h4>
-  <pre>{
-  <span class="key">"cmdId"</span>: <span class="str">"cmd-20260918-lock-001"</span>,
-  <span class="key">"code"</span>: <span class="num">0</span>,
-  <span class="key">"message"</span>: <span class="str">"设备已锁定"</span>,
-  <span class="key">"data"</span>: { <span class="key">"lockState"</span>: <span class="str">"locked"</span> },
-  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T10:00:02Z"</span>
-}</pre>
-</div>
+  "timestamp": "2026-10-08T10:00:00Z",
+  "timeout": 30
+}</code></pre>
+        <h4>设备响应（resp）</h4>
+<pre class="hl"><code class="lang-json">/* Correlation Data: base64("cmd-20261008-001") — 原样带回 */
+{
+  "cmdId": "cmd-20261008-001",
+  "code": 0,
+  "message": "设备已锁定",
+  "data": { "lockState": "locked" },
+  "timestamp": "2026-10-08T10:00:02Z"
+}</code></pre>
+      </div>
 
-<!-- 6.2 设备重启 -->
-<h3 id="s6-2">6.2 设备重启 <span class="tag tag-down">下行</span></h3>
-<div class="card">
-  <p><b>Topic：</b><code>bms/device/{imei}/cmd/restart</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
-  <p>平台下发设备重启指令。设备收到后执行软重启，重启完成后自动重新连接并注册。</p>
-  <h4>指令参数</h4>
-  <table class="field-table">
-    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
-    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>指令唯一ID</td></tr>
-    <tr><td>action</td><td>String</td><td class="req">是</td><td>固定值：<code>restart</code></td></tr>
-    <tr><td>params.restartType</td><td>String</td><td class="opt">否</td><td>重启类型：<code>soft</code>（软重启，默认）/ <code>hard</code>（硬重启）</td></tr>
-    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>下发时间</td></tr>
-    <tr><td>timeout</td><td>Integer</td><td class="opt">否</td><td>超时时间（秒），默认60</td></tr>
-  </table>
-  <h4>示例</h4>
-  <pre>{
-  <span class="key">"cmdId"</span>: <span class="str">"cmd-20260918-restart-001"</span>,
-  <span class="key">"action"</span>: <span class="str">"restart"</span>,
-  <span class="key">"params"</span>: { <span class="key">"restartType"</span>: <span class="str">"soft"</span> },
-  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T10:00:00Z"</span>,
-  <span class="key">"timeout"</span>: <span class="num">60</span>
-}</pre>
-  <div class="note">设备重启后无法立即响应，平台需等待设备重新上线注册后判定重启成功。超时后自动重连视为失败。</div>
-</div>
+      <!-- 7.2 -->
+      <h3 id="s7-2">7.2 设备重启 <span class="tag tag-down">下行</span></h3>
+      <div class="card">
+        <div class="msg-head">
+          <b>Topic：</b><code>bms/device/{imei}/cmd/restart</code>　<b>QoS：</b>1
+          <div class="kv"><b>Message Expiry：</b>60s　<b>Response Topic：</b><code>bms/device/{imei}/resp</code></div>
+          <div class="kv"><b>User Properties：</b><span class="down">msg_type=restart</span> <span class="down">request_id={cmdId}</span></div>
+        </div>
+        <p>设备收到后执行软重启；重启完成后重新连接并注册，平台以「重连 + 重新注册」作为重启成功的最终依据。</p>
+<pre class="hl"><code class="lang-json">/* ── MQTT 5.0 PUBLISH 请求 ──────────────────────────────
+   Topic:            bms/device/864114130050327/cmd/restart
+   QoS:              1
+   Message Expiry:   60s
+   Response Topic:   bms/device/864114130050327/resp
+   Correlation Data: base64("cmd-20261008-restart-001")
+*/
+{
+  "cmdId": "cmd-20261008-restart-001",
+  "action": "restart",
+  "params": { "restartType": "soft" },
+  "timestamp": "2026-10-08T10:00:00Z",
+  "timeout": 60
+}</code></pre>
+        <div class="note">设备重启后无法立即应答，平台不应依赖 resp；需在 60s 内等待设备重连 + 注册（<code>bms/device/{imei}/register</code>）判定成功。</div>
+      </div>
 
-<!-- 6.3 设备休眠/唤醒 -->
-<h3 id="s6-3">6.3 设备休眠/唤醒 <span class="tag tag-down">下行</span></h3>
-<div class="card">
-  <p><b>Topic：</b><code>bms/device/{imei}/cmd/sleep</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
-  <p>平台下发设备休眠或唤醒指令。休眠后设备进入低功耗模式，停止数据上报，仅维持心跳。</p>
-  <h4>指令参数</h4>
-  <table class="field-table">
-    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
-    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>指令唯一ID</td></tr>
-    <tr><td>action</td><td>String</td><td class="req">是</td><td>固定值：<code>sleep</code></td></tr>
-    <tr><td>params.mode</td><td>String</td><td class="req">是</td><td>目标模式：<code>sleep</code>（休眠）/ <code>wake</code>（唤醒）</td></tr>
-    <tr><td>params.sleepDuration</td><td>Integer</td><td class="opt">否</td><td>休眠时长（秒），0=持续休眠直到唤醒，默认0</td></tr>
-    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>下发时间</td></tr>
-  </table>
-  <h4>示例</h4>
-  <pre>{
-  <span class="key">"cmdId"</span>: <span class="str">"cmd-20260918-sleep-001"</span>,
-  <span class="key">"action"</span>: <span class="str">"sleep"</span>,
-  <span class="key">"params"</span>: { <span class="key">"mode"</span>: <span class="str">"sleep"</span>, <span class="key">"sleepDuration"</span>: <span class="num">0</span> },
-  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T10:00:00Z"</span>
-}</pre>
-</div>
+      <!-- 7.3 -->
+      <h3 id="s7-3">7.3 设备休眠 / 唤醒 <span class="tag tag-down">下行</span></h3>
+      <div class="card">
+        <div class="msg-head">
+          <b>Topic：</b><code>bms/device/{imei}/cmd/sleep</code>　<b>QoS：</b>1
+          <b>Message Expiry：</b>60s　<b>Response Topic：</b><code>bms/device/{imei}/resp</code>
+        </div>
+        <p>休眠后设备进入低功耗（仅保心跳），唤醒后恢复数据上报。</p>
+        <h4>table 参数</h4>
+        <div class="table-wrap"><table class="field-table">
+          <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+          <tr><td>params.mode</td><td>String</td><td class="req">是</td><td>sleep（休眠）/ wake（唤醒）</td></tr>
+          <tr><td>params.sleepDuration</td><td>Integer</td><td class="opt">否</td><td>休眠时长（秒），0=持续休眠直至唤醒</td></tr>
+        </table></div>
+        <h4>载荷示例</h4>
+<pre class="hl"><code class="lang-json">/* ── MQTT 5.0 PUBLISH 请求（属性同上类）── */
+{
+  "cmdId": "cmd-20261008-sleep-001",
+  "action": "sleep",
+  "params": { "mode": "sleep", "sleepDuration": 0 },
+  "timestamp": "2026-10-08T10:00:00Z"
+}</code></pre>
+      </div>
 
-<!-- 6.4 GPS模块重启 -->
-<h3 id="s6-4">6.4 GPS模块重启 <span class="tag tag-down">下行</span></h3>
-<div class="card">
-  <p><b>Topic：</b><code>bms/device/{imei}/cmd/gps_restart</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
-  <p>平台下发GPS模块重启指令。用于GPS定位异常时尝试恢复。</p>
-  <h4>指令参数</h4>
-  <table class="field-table">
-    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
-    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>指令唯一ID</td></tr>
-    <tr><td>action</td><td>String</td><td class="req">是</td><td>固定值：<code>gps_restart</code></td></tr>
-    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>下发时间</td></tr>
-  </table>
-  <h4>示例</h4>
-  <pre>{
-  <span class="key">"cmdId"</span>: <span class="str">"cmd-20260918-gps-001"</span>,
-  <span class="key">"action"</span>: <span class="str">"gps_restart"</span>,
-  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T10:00:00Z"</span>
-}</pre>
-</div>
+      <!-- 7.4 -->
+      <h3 id="s7-4">7.4 GPS 模块重启 <span class="tag tag-down">下行</span></h3>
+      <div class="card">
+        <div class="msg-head">
+          <b>Topic：</b><code>bms/device/{imei}/cmd/gps_restart</code>　<b>QoS：</b>1
+          <b>Response Topic：</b><code>bms/device/{imei}/resp</code>
+        </div>
+        <p>用于 GPS 定位异常（gpsStatus=2）时的远程恢复手段。</p>
+<pre class="hl"><code class="lang-json">{
+  "cmdId": "cmd-20261008-gps-001",
+  "action": "gps_restart",
+  "timestamp": "2026-10-08T10:00:00Z"
+}</code></pre>
+        <h4>设备响应</h4>
+<pre class="hl"><code class="lang-json">{
+  "cmdId": "cmd-20261008-gps-001",
+  "code": 0,
+  "message": "GPS模块已重启",
+  "timestamp": "2026-10-08T10:00:03Z"
+}</code></pre>
+      </div>
 
-<!-- 6.5 参数配置下发 -->
-<h3 id="s6-5">6.5 参数配置下发 <span class="tag tag-down">下行</span></h3>
-<div class="card">
-  <p><b>Topic：</b><code>bms/device/{imei}/cmd/config</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
-  <p>平台向设备下发参数配置，包括阈值参数、上报间隔等。设备收到后更新本地配置并返回当前配置快照。</p>
-  <h4>指令参数</h4>
-  <table class="field-table">
-    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
-    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>指令唯一ID</td></tr>
-    <tr><td>action</td><td>String</td><td class="req">是</td><td>固定值：<code>config</code></td></tr>
-    <tr><td>params.configs</td><td>Object</td><td class="req">是</td><td>配置项键值对，见下表</td></tr>
-    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>下发时间</td></tr>
-  </table>
-  <h4>可配置参数项</h4>
-  <table class="field-table">
-    <tr><th>配置项Key</th><th>类型</th><th>单位</th><th>说明</th></tr>
-    <tr><td>cellOverVoltageThreshold</td><td>Integer</td><td>mV</td><td>单体过压阈值</td></tr>
-    <tr><td>cellUnderVoltageThreshold</td><td>Integer</td><td>mV</td><td>单体低压阈值</td></tr>
-    <tr><td>cellOverVoltageProtect</td><td>Integer</td><td>mV</td><td>单体过压保护值</td></tr>
-    <tr><td>cellUnderVoltageProtect</td><td>Integer</td><td>mV</td><td>单体低压保护值</td></tr>
-    <tr><td>voltageDiffThreshold</td><td>Integer</td><td>mV</td><td>压差告警阈值</td></tr>
-    <tr><td>totalOverVoltageThreshold</td><td>Float</td><td>V</td><td>总电压过压阈值</td></tr>
-    <tr><td>batteryHighTempThreshold</td><td>Float</td><td>℃</td><td>电池高温告警阈值</td></tr>
-    <tr><td>batteryLowTempThreshold</td><td>Float</td><td>℃</td><td>电池低温告警阈值</td></tr>
-    <tr><td>mosHighTempThreshold</td><td>Float</td><td>℃</td><td>MOS高温告警阈值</td></tr>
-    <tr><td>chargerHighTempThreshold</td><td>Float</td><td>℃</td><td>充电机高温告警阈值</td></tr>
-    <tr><td>socLowAlarmThreshold</td><td>Float</td><td>%</td><td>SOC低电告警阈值</td></tr>
-    <tr><td>socLowProtectThreshold</td><td>Float</td><td>%</td><td>SOC极低保护阈值</td></tr>
-    <tr><td>sohLowAlarmThreshold</td><td>Float</td><td>%</td><td>SOH低告警阈值</td></tr>
-    <tr><td>cycleCountAlarmThreshold</td><td>Integer</td><td>次</td><td>循环次数告警阈值</td></tr>
-    <tr><td>dataReportInterval</td><td>Integer</td><td>秒</td><td>数据上报间隔</td></tr>
-    <tr><td>heartbeatInterval</td><td>Integer</td><td>秒</td><td>心跳上报间隔</td></tr>
-  </table>
-  <h4>示例</h4>
-  <pre>{
-  <span class="key">"cmdId"</span>: <span class="str">"cmd-20260918-config-001"</span>,
-  <span class="key">"action"</span>: <span class="str">"config"</span>,
-  <span class="key">"params"</span>: {
-    <span class="key">"configs"</span>: {
-      <span class="key">"cellOverVoltageThreshold"</span>: <span class="num">3650</span>,
-      <span class="key">"cellUnderVoltageThreshold"</span>: <span class="num">2500</span>,
-      <span class="key">"batteryHighTempThreshold"</span>: <span class="num">55.0</span>,
-      <span class="key">"socLowAlarmThreshold"</span>: <span class="num">20.0</span>,
-      <span class="key">"dataReportInterval"</span>: <span class="num">30</span>,
-      <span class="key">"heartbeatInterval"</span>: <span class="num">60</span>
+      <!-- 7.5 -->
+      <h3 id="s7-5">7.5 参数配置下发 <span class="tag tag-down">下行</span></h3>
+      <div class="card">
+        <div class="msg-head">
+          <b>Topic：</b><code>bms/device/{imei}/cmd/config</code>　<b>QoS：</b>1
+          <b>Response Topic：</b><code>bms/device/{imei}/resp</code>　<b>Message Expiry：</b>60s
+        </div>
+        <p>下发阈值 / 上报间隔等参数，设备更新后返回当前配置快照。</p>
+        <h4>可配置参数项（节选）</h4>
+        <div class="table-wrap"><table class="field-table">
+          <tr><th>Key</th><th>类型</th><th>单位</th><th>说明</th></tr>
+          <tr><td>cellOverVoltageThreshold</td><td>Integer</td><td>mV</td><td>单体过压阈值</td></tr>
+          <tr><td>cellUnderVoltageThreshold</td><td>Integer</td><td>mV</td><td>单体低压阈值</td></tr>
+          <tr><td>voltageDiffThreshold</td><td>Integer</td><td>mV</td><td>压差告警阈值</td></tr>
+          <tr><td>batteryHighTempThreshold</td><td>Float</td><td>℃</td><td>电池高温阈值</td></tr>
+          <tr><td>socLowAlarmThreshold</td><td>Float</td><td>%</td><td>SOC 低电告警阈值</td></tr>
+          <tr><td>dataReportInterval</td><td>Integer</td><td>秒</td><td>数据上报间隔</td></tr>
+          <tr><td>heartbeatInterval</td><td>Integer</td><td>秒</td><td>心跳上报间隔</td></tr>
+        </table></div>
+        <h4>载荷示例</h4>
+<pre class="hl"><code class="lang-json">/* ── MQTT 5.0 PUBLISH 请求 ──────────────────────────────
+   Topic:            bms/device/864114130050327/cmd/config
+   QoS:              1
+   Response Topic:   bms/device/864114130050327/resp
+   Correlation Data: base64("cmd-20261008-config-001")
+   User Properties:  msg_type=config, request_id=cmd-20261008-config-001
+────────────────────────────────────────────────────────── */
+{
+  "cmdId": "cmd-20261008-config-001",
+  "action": "config",
+  "params": {
+    "configs": {
+      "cellOverVoltageThreshold": 3650,
+      "cellUnderVoltageThreshold": 2500,
+      "batteryHighTempThreshold": 55.0,
+      "socLowAlarmThreshold": 20.0,
+      "dataReportInterval": 30,
+      "heartbeatInterval": 60
     }
   },
-  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T10:00:00Z"</span>
-}</pre>
-</div>
-
-<!-- 6.6 故障消除 -->
-<h3 id="s6-6">6.6 故障消除 <span class="tag tag-down">下行</span></h3>
-<div class="card">
-  <p><b>Topic：</b><code>bms/device/{imei}/cmd/fault_clear</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
-  <p>平台下发故障消除指令，清除设备当前记录的故障状态。</p>
-  <h4>指令参数</h4>
-  <table class="field-table">
-    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
-    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>指令唯一ID</td></tr>
-    <tr><td>action</td><td>String</td><td class="req">是</td><td>固定值：<code>fault_clear</code></td></tr>
-    <tr><td>params.faultCode</td><td>Integer</td><td class="opt">否</td><td>指定故障码清除；不填则清除所有故障</td></tr>
-    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>下发时间</td></tr>
-  </table>
-  <h4>示例 — 清除所有故障</h4>
-  <pre>{
-  <span class="key">"cmdId"</span>: <span class="str">"cmd-20260918-fault-001"</span>,
-  <span class="key">"action"</span>: <span class="str">"fault_clear"</span>,
-  <span class="key">"params"</span>: {},
-  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T10:00:00Z"</span>
-}</pre>
-</div>
-
-<!-- 6.7 OTA升级 -->
-<h3 id="s6-7">6.7 OTA升级指令 <span class="tag tag-down">下行</span></h3>
-<div class="card">
-  <p><b>Topic：</b><code>bms/device/{imei}/cmd/ota</code> &nbsp;|&nbsp; <b>QoS：</b>2</p>
-  <p>平台下发OTA升级指令，设备收到后下载固件并执行升级。</p>
-  <h4>指令参数</h4>
-  <table class="field-table">
-    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
-    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>指令唯一ID</td></tr>
-    <tr><td>action</td><td>String</td><td class="req">是</td><td>固定值：<code>ota</code></td></tr>
-    <tr><td>params.taskId</td><td>String</td><td class="req">是</td><td>升级任务ID</td></tr>
-    <tr><td>params.firmwareUrl</td><td>String</td><td class="req">是</td><td>固件下载URL（HTTPS）</td></tr>
-    <tr><td>params.firmwareVersion</td><td>String</td><td class="req">是</td><td>目标固件版本号</td></tr>
-    <tr><td>params.firmwareSize</td><td>Integer</td><td class="req">是</td><td>固件大小（字节）</td></tr>
-    <tr><td>params.firmwareMd5</td><td>String</td><td class="req">是</td><td>固件MD5校验值</td></tr>
-    <tr><td>params.upgradeMode</td><td>String</td><td class="opt">否</td><td>升级模式：<code>immediate</code>（立即）/ <code>scheduled</code>（定时），默认immediate</td></tr>
-    <tr><td>params.scheduledTime</td><td>String</td><td class="opt">否</td><td>定时升级执行时间（upgradeMode=scheduled时必填）</td></tr>
-    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>下发时间</td></tr>
-    <tr><td>timeout</td><td>Integer</td><td class="opt">否</td><td>超时时间（秒），默认1800（30分钟）</td></tr>
-  </table>
-  <h4>示例</h4>
-  <pre>{
-  <span class="key">"cmdId"</span>: <span class="str">"cmd-20260918-ota-001"</span>,
-  <span class="key">"action"</span>: <span class="str">"ota"</span>,
-  <span class="key">"params"</span>: {
-    <span class="key">"taskId"</span>: <span class="str">"ota-20260918-001"</span>,
-    <span class="key">"firmwareUrl"</span>: <span class="str">"https://ota.bms-system.com/firmware/ZLB005D_V2.3.1.bin"</span>,
-    <span class="key">"firmwareVersion"</span>: <span class="str">"V2.3.1"</span>,
-    <span class="key">"firmwareSize"</span>: <span class="num">2570480</span>,
-    <span class="key">"firmwareMd5"</span>: <span class="str">"a1b2c3d4e5f67890abcdef1234567890"</span>,
-    <span class="key">"upgradeMode"</span>: <span class="str">"immediate"</span>
+  "timestamp": "2026-10-08T10:00:00Z"
+}</code></pre>
+        <h4>设备响应（携带最新配置快照）</h4>
+<pre class="hl"><code class="lang-json">{
+  "cmdId": "cmd-20261008-config-001",
+  "code": 0,
+  "message": "参数已生效",
+  "data": {
+    "configs": { "cellOverVoltageThreshold": 3650, "dataReportInterval": 30, "heartbeatInterval": 60 }
   },
-  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T09:00:00Z"</span>,
-  <span class="key">"timeout"</span>: <span class="num">1800</span>
-}</pre>
-</div>
+  "timestamp": "2026-10-08T10:00:01Z"
+}</code></pre>
+      </div>
 
-<!-- 6.8 同步数据 -->
-<h3 id="s6-8">6.8 同步数据请求 <span class="tag tag-down">下行</span></h3>
-<div class="card">
-  <p><b>Topic：</b><code>bms/device/{imei}/cmd/sync</code> &nbsp;|&nbsp; <b>QoS：</b>1</p>
-  <p>平台请求设备立即上报一次完整的实时数据（电池数据+开关状态+电压信息）。</p>
-  <h4>指令参数</h4>
-  <table class="field-table">
-    <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
-    <tr><td>cmdId</td><td>String</td><td class="req">是</td><td>指令唯一ID</td></tr>
-    <tr><td>action</td><td>String</td><td class="req">是</td><td>固定值：<code>sync</code></td></tr>
-    <tr><td>params.dataTypes</td><td>String[]</td><td class="opt">否</td><td>请求的数据类型：<code>data</code>/<code>switch</code>/<code>voltage</code>/<code>gps</code>，不填则全部同步</td></tr>
-    <tr><td>timestamp</td><td>String</td><td class="req">是</td><td>下发时间</td></tr>
-  </table>
-  <h4>示例</h4>
-  <pre>{
-  <span class="key">"cmdId"</span>: <span class="str">"cmd-20260918-sync-001"</span>,
-  <span class="key">"action"</span>: <span class="str">"sync"</span>,
-  <span class="key">"params"</span>: {
-    <span class="key">"dataTypes"</span>: [<span class="str">"data"</span>, <span class="str">"switch"</span>, <span class="str">"voltage"</span>]
+      <!-- 7.6 -->
+      <h3 id="s7-6">7.6 故障消除 <span class="tag tag-down">下行</span></h3>
+      <div class="card">
+        <div class="msg-head">
+          <b>Topic：</b><code>bms/device/{imei}/cmd/fault_clear</code>　<b>QoS：</b>1
+          <b>Response Topic：</b><code>bms/device/{imei}/resp</code>
+        </div>
+        <p>平台确认现场处理后，下发清除指定故障或全部故障。</p>
+<pre class="hl"><code class="lang-json">/* 请求：清除全部故障（params.faultCode 为空） */
+{
+  "cmdId": "cmd-20261008-fault-001",
+  "action": "fault_clear",
+  "params": { "faultCode": 0 },
+  "timestamp": "2026-10-08T10:00:00Z"
+}</code></pre>
+      </div>
+
+      <!-- 7.7 -->
+      <h3 id="s7-7">7.7 OTA 升级指令 <span class="tag tag-down">下行</span></h3>
+      <div class="card">
+        <div class="msg-head">
+          <b>Topic：</b><code>bms/device/{imei}/cmd/ota</code>　<b>QoS：</b>2（恰好一次）　<b>Message Expiry：</b>1800s
+          <b>Response Topic：</b><code>bms/device/{imei}/resp</code>
+        </div>
+        <p>OTA 指令使用 QoS 2 保证不重不丢；设备通过 <code>ota/status</code> 上报执行进度，平台以 ota_status=success 作为完成判定。</p>
+        <div class="table-wrap"><table class="field-table">
+          <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+          <tr><td>params.taskId</td><td>String</td><td class="req">是</td><td>升级任务 ID</td></tr>
+          <tr><td>params.firmwareUrl</td><td>String</td><td class="req">是</td><td>固件下载 URL（HTTPS）</td></tr>
+          <tr><td>params.firmwareVersion</td><td>String</td><td class="req">是</td><td>目标版本</td></tr>
+          <tr><td>params.firmwareSize</td><td>Integer</td><td class="req">是</td><td>固件字节数</td></tr>
+          <tr><td>params.firmwareMd5</td><td>String</td><td class="req">是</td><td>MD5 校验值</td></tr>
+          <tr><td>params.upgradeMode</td><td>String</td><td class="opt">否</td><td>immediate / scheduled</td></tr>
+          <tr><td>params.scheduledTime</td><td>String</td><td class="opt">否</td><td>定时时间（upgradeMode=scheduled）</td></tr>
+        </table></div>
+        <h4>载荷示例</h4>
+<pre class="hl"><code class="lang-json">/* ── MQTT 5.0 PUBLISH 请求 ──────────────────────────────
+   Topic:            bms/device/864114130050327/cmd/ota
+   QoS:              2
+   Message Expiry:   1800s
+   Response Topic:   bms/device/864114130050327/resp
+   Correlation Data: base64("cmd-20261008-ota-001")
+   User Properties: {msg_type: ota, request_id: cmd-20261008-ota-001}
+*/
+{
+  "cmdId": "cmd-20261008-ota-001",
+  "action": "ota",
+  "params": {
+    "taskId": "ota-20261008-001",
+    "firmwareUrl": "https://ota.bms-system.com/firmware/ZLB005D_V2.4.0.bin",
+    "firmwareVersion": "V2.4.0",
+    "firmwareSize": 2570480,
+    "firmwareMd5": "a1b2c3d4e5f67890abcdef1234567890",
+    "upgradeMode": "immediate"
   },
-  <span class="key">"timestamp"</span>: <span class="str">"2026-09-18T10:00:00Z"</span>
-}</pre>
-  <div class="note">设备收到同步请求后，应在5秒内分别向 <code>bms/device/{imei}/data</code>、<code>bms/device/{imei}/switch</code>、<code>bms/device/{imei}/voltage</code> 发送一次最新数据，并在 <code>resp</code> 上返回确认。</div>
+  "timestamp": "2026-10-08T09:00:00Z",
+  "timeout": 1800
+}</code></pre>
+        <h4>设备响应</h4>
+<pre class="hl"><code class="lang-json">{
+  "cmdId": "cmd-20261008-ota-001",
+  "code": 0,
+  "message": "已开始下载固件",
+  "data": { "taskId": "ota-20261008-001" },
+  "timestamp": "2026-10-08T09:00:01Z"
+}</code></pre>
+      </div>
+
+      <!-- 7.8 -->
+      <h3 id="s7-8">7.8 同步数据请求 <span class="tag tag-down">下行</span></h3>
+      <div class="card">
+        <div class="msg-head">
+          <b>Topic：</b><code>bms/device/{imei}/cmd/sync</code>　<b>QoS：</b>1
+          <b>Response Topic：</b><code>bms/device/{imei}/resp</code>
+        </div>
+        <p>请求设备立即补报一份完整实时数据（data / switch / voltage / gps 按需），5 秒内分别在对应 Topic 上报并应答 resp。</p>
+<pre class="hl"><code class="lang-json">{
+  "cmdId": "cmd-20261008-sync-001",
+  "action": "sync",
+  "params": {
+    "dataTypes": ["data", "switch", "voltage", "gps"]
+  },
+  "timestamp": "2026-10-08T10:00:00Z"
+}</code></pre>
+        <h4>设备响应</h4>
+<pre class="hl"><code class="lang-json">{
+  "cmdId": "cmd-20261008-sync-001",
+  "code": 0,
+  "message": "已按请求类型上报",
+  "timestamp": "2026-10-08T10:00:01Z"
+}</code></pre>
+      </div>
+
+      <!-- ====================== 8. 规则引擎 ====================== -->
+      <h2 id="s8">8. EMQX 规则引擎配置</h2>
+      <div class="card">
+        <h3>8.1 概述</h3>
+        <p>EMQX 5.7.2 规则引擎以 <b>SQL</b> 方式对消息与事件流进行「过滤 + 字段提取 + 转发」，是数据从 Broker 流向业务的桥梁。BMS 典型链路：</p>
+<pre class="ascii">设备 PUBLISH ──▶ EMQX 规则引擎(SQL 过滤/映射) ──▶ 动作(Action/Sink)
+    bms/device/+/data  ◀──────────────────────┐
+                                              ├─▶ 重发布到内部 Topic（如 bms/alarm/soc_low）
+                                              ├─▶ Webhook → 平台 API
+                                              ├─▶ Kafka → 数据管道
+                                              └─▶ MySQL / InfluxDB → 存储</pre>
+      </div>
+
+      <h3 id="s8-2">8.2 支持的事件类型</h3>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <tr><th>事件</th><th>SQL 主题写法</th><th>BMS 用途</th></tr>
+          <tr><td>消息发布</td><td><code>"bms/device/+/data"</code> 或 <code>"bms/device/#"</code></td><td>设备上报数据处理（默认 message.publish）</td></tr>
+          <tr><td>消息确认</td><td><code>"$events/message_acked"</code></td><td>QoS1/2 消息送达确认统计</td></tr>
+          <tr><td>消息丢弃</td><td><code>"$events/message_dropped"</code></td><td>过期/超配额丢包审计</td></tr>
+          <tr><td>客户端连接</td><td><code>"$events/client_connected"</code></td><td>设备上线记录</td></tr>
+          <tr><td>客户端断开</td><td><code>"$events/client_disconnected"</code></td><td>设备下线记录（与 LWT 互补）</td></tr>
+          <tr><td>订阅</td><td><code>"$events/session_subscribed"</code> / <code>"$events/session_unsubscribed"</code></td><td>平台消费者管理</td></tr>
+          <tr><td>消息重发布</td><td><code>"$events/message_published"</code></td><td>转发类消息链路</td></tr>
+        </table></div>
+      </div>
+
+      <h3 id="s8-3">8.3 SQL 语法要点</h3>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <tr><th>子句</th><th>示例</th><th>说明</th></tr>
+          <tr><td>SELECT</td><td><code>SELECT payload.soc, payload.totalVoltage</code></td><td>提取字段；* 取全部；支持表达式与函数</td></tr>
+          <tr><td>FROM</td><td><code>FROM "bms/device/+/data"</code></td><td>Topic 过滤（消息事件）或 <code>$events/…</code></td></tr>
+          <tr><td>WHERE</td><td><code>WHERE payload.soc &lt; 20</code></td><td>条件过滤</td></tr>
+          <tr><td>FOREACH / DO</td><td>遍历数组（如单体电压）</td><td>FOREACH payload.cells DO …</td></tr>
+          <tr><td>AS</td><td><code>… AS device_soc</code></td><td>字段重命名</td></tr>
+        </table></div>
+      </div>
+
+      <h3 id="s8-4">8.4 规则 SQL 示例</h3>
+      <div class="card">
+        <h4>示例 1：SOC 低电预警（核心示例）</h4>
+<pre class="hl"><code class="lang-sql">-- 电池数据中 SOC &lt; 20 时触发，将数据转发至告警 Topic
+SELECT
+  payload.imei           AS imei,
+  payload.soc            AS soc,
+  payload.totalVoltage   AS totalVoltage,
+  payload.batteryTemp    AS batteryTemp,
+  clientid               AS client_id,
+  topic                  AS src_topic
+FROM "bms/device/+/data"
+WHERE payload.soc &lt; 20
+      AND payload.soc >= 0</code></pre>
+        <h4>示例 2：告警事件实时推送</h4>
+<pre class="hl"><code class="lang-sql">SELECT
+    payload.imei      AS imei,
+    payload.alarmCode AS alarmCode,
+    payload.alarmLevel AS alarmLevel,
+    payload.alarmDesc AS alarmDesc,
+    timestamp         AS ts
+FROM "bms/device/+/alarm"
+WHERE payload.alarmLevel = 'fault' OR payload.alarmLevel = 'critical'</code></pre>
+        <h4>示例 3：设备上线 / 下线事件</h4>
+<pre class="hl"><code class="lang-sql">SELECT clientid AS imei, connected_at AS ts
+FROM "$events/client_connected"
+
+SELECT clientid AS imei, reason AS disconnect_reason, disconnected_at AS ts
+FROM "$events/client_disconnected"</code></pre>
+        <h4>示例 4：单体电压逐串拆行（FOREACH）</h4>
+<pre class="hl"><code class="lang-sql">FOREACH payload.cellVoltages
+    AS cell
+DO
+    SELECT
+        payload.imei        AS imei,
+        foreach.index + 1   AS cell_index,
+        cell                AS cell_voltage_mv
+FROM "bms/device/+/voltage"</code></pre>
+        <h4>示例 5：消息确认审计（message.ack）</h4>
+<pre class="hl"><code class="lang-sql">SELECT clientid, topic, qos, puback_reason_code
+FROM "$events/message_acked"
+WHERE topic LIKE 'bms/device/%/cmd/%'</code></pre>
+      </div>
+
+      <h3 id="s8-5">8.5 常用字段（数据源）</h3>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <tr><th>字段</th><th>说明</th><th>示例值</th></tr>
+          <tr><td>clientid</td><td>客户端 ID</td><td>bms_device_864114130050327</td></tr>
+          <tr><td>username</td><td>用户名</td><td>864114130050327</td></tr>
+          <tr><td>topic</td><td>消息 Topic</td><td>bms/device/864114130050327/data</td></tr>
+          <tr><td>qos</td><td>QoS 等级</td><td>1</td></tr>
+          <tr><td>payload</td><td>JSON 载荷（可 .字段 访问）</td><td>{"soc":85.5,…}</td></tr>
+          <tr><td>timestamp</td><td>事件时间戳（毫秒）</td><td>1728306000123</td></tr>
+          <tr><td>flags.retain</td><td>是否保留消息</td><td>true</td></tr>
+          <tr><td>peerhost</td><td>客户端 IP</td><td>203.0.113.10</td></tr>
+          <tr><td>event</td><td>事件类型</td><td>message.publish</td></tr>
+          <tr><td>user_properties</td><td>User Properties 对象</td><td>{"msg_type":"data"}</td></tr>
+        </table></div>
+      </div>
+
+      <h3 id="s8-6">8.6 Sink 配置（动作示例）</h3>
+      <div class="card">
+        <h4>Webhook Sink（→ 平台 API）</h4>
+<pre class="hl"><code class="lang-qt"># 规则动作：webhook
+actions = [{
+  function = "webhook"
+  args = {
+    url = "https://api.bms-system.com/v1/mqtt/events"
+    headers = { "content-type" = "application/json", "x-source" = "emqx" }
+    method = post
+    body = "{\"imei\": \"${clientid}\", \"event\": \"${event}\", \"payload\": ${payload}}"
+  }
+}]</code></pre>
+        <h4>Kafka Sink（数据管道）</h4>
+<pre class="hl"><code class="lang-qt">actions = [
+  { function = "kafka"
+    args = {
+      bootstrap_hosts = ["kafka.bms-system.com:9092"]
+      topic = "bms-ingest"
+      message_key = "${clientid}"
+      sync_ack_interval = 10
+    }
+  }
+]</code></pre>
+      </div>
+
+      <!-- ====================== 9. 数据集成 ====================== -->
+      <h2 id="s9">9. EMQX 数据集成方案</h2>
+      <div class="card">
+        <h3>9.1 集成总览</h3>
+        <div class="table-wrap"><table>
+          <tr><th>Sink</th><th>适用场景</th><th>BMS 用途</th></tr>
+          <tr><td>Webhook</td><td>实时调用后端 API</td><td>告警推送、注册处理、指令响应</td></tr>
+          <tr><td>Kafka</td><td>海量数据管道</td><td>全量遥测数据 → 实时计算 / 数仓</td></tr>
+          <tr><td>MySQL</td><td>业务库（结构化）</td><td>设备档案、告警记录、OTA 任务</td></tr>
+          <tr><td>InfluxDB</td><td>时序存储</td><td>电压 / 电流 / 温度曲线</td></tr>
+          <tr><td>ClickHouse</td><td>分析型存储</td><td>历史分析 / 报表大屏</td></tr>
+          <tr><td>TDengine / Redis（可选）</td><td>国产时序 / 缓存</td><td>运维大盘缓存、实时状态</td></tr>
+        </table></div>
+      </div>
+
+      <h3 id="s9-2">9.2 Webhook → 后端 API（实时业务）</h3>
+      <div class="card">
+        <p>适合低频高价值事件：告警、注册、OTA 完成。示例规则 + Webhook 动作：</p>
+<pre class="hl"><code class="lang-sql">-- 规则：注册消息 → 后端创建/更新设备
+SELECT payload.imei, payload.hwVersion, payload.swVersion, clientid
+FROM "bms/device/+/register"</code></pre>
+<pre class="hl"><code class="lang-qt"># 动作：Webhook → BMS 平台 API
+url    = "http://10.0.0.10:8080/api/v1/device/register"
+method = POST
+header = {"content-type": "application/json", "x-auth-token": "bms-internal-token"}
+body   = json_encode({...})   # 模板引擎拼接</code></pre>
+      </div>
+
+      <h3>9.3 Kafka → 数据管道</h3>
+      <div class="card">
+        <p>适合：全量遥测（data / switch / voltage / gps）接入 Kafka，供流计算（Flink）与微服务消费。Kafka Topic 按消息类型划分：</p>
+        <div class="table-wrap"><table>
+          <tr><th>Kafka Topic</th><th>来源规则</th><th>说明</th></tr>
+          <tr><td>bms-telemetry-data</td><td><code>FROM "bms/device/+/data"</code></td><td>电池实时数据（高频）</td></tr>
+          <tr><td>bms-telemetry-voltage</td><td><code>FROM "bms/device/+/voltage"</code></td><td>单体电压（大报文）</td></tr>
+          <tr><td>bms-events-alarm</td><td><code>FROM "bms/device/+/alarm"</code></td><td>告警事件</td></tr>
+          <tr><td>bms-events-status</td><td><code>FROM "bms/device/+/status"</code></td><td>上线 / 下线状态</td></tr>
+        </table></div>
+      </div>
+
+      <h3>9.4 MySQL → 业务库</h3>
+      <div class="card">
+        <p>规则将结果落库（自动建表建议通过 EMQX 数据集成预览）</p>
+<pre class="hl"><code class="lang-sql">-- 电池数据入库（简化）
+SELECT clientid AS imei, payload.soc, payload.total_voltage, payload.current,
+       payload.battery_temp, NOW() AS ts
+FROM "bms/device/+/data"</code></pre>
+        <pre class="hl"><code class="lang-qt"># MySQL Sink 参数
+server    = "10.0.0.11:3306"
+database  = "bms"
+username  = "emqx_writer"
+password  = "********"
+sql       = "INSERT INTO device_realtime(imei, soc, total_voltage, current, battery_temp, ts) VALUES (${imei}, ${soc}, ${total_voltage}, ${current}, ${battery_temp}, FROM_UNIXTIME(${n_ms}/1000))"</code></pre>
+      </div>
+
+      <h3 id="s9-5">9.5 InfluxDB → 时序存储</h3>
+      <div class="card">
+        <p>适合实时曲线（电压 / 电流 / SOC / 温度）秒级落库，BMS 大屏图表直接查询。</p>
+<pre class="hl"><code class="lang-qt"># InfluxDB Sink
+server = "http://10.0.0.12:8086"
+bucket  = "bms"
+org     = "bms-org"
+token   = "influxdb-write-token"
+# measurement: bms_metrics
+# tags:        imei, device_type
+# fields:      soc, total_voltage, current, battery_temp, mos_temp</code></pre>
+      </div>
+
+      <h3 id="s9-6">9.6 ClickHouse → 分析</h3>
+      <div class="card">
+        <p>历史明细与统计分析（日报 / 月报 / 生命周期画像）：</p>
+<pre class="hl"><code class="lang-qt"># ClickHouse Sink
+url = "http://10.0.0.13:8123"
+database = "bms_analytics"
+table = "device_telemetry"
+# 建表建议（MergeTree）
+# CREATE TABLE device_telemetry (
+#   imei String, ts DateTime, soc Float32, total_voltage Float32,
+#   current Float32, battery_temp Float32, alarm_count UInt32
+# ) ENGINE = MergeTree() PARTITION BY toYYYYMM(ts) ORDER BY (imei, ts)</code></pre>
+      </div>
+
+      <!-- ====================== 10. 响应码与 Reason Code ====================== -->
+      <h2 id="s10">10. 响应码与 Reason Code 定义</h2>
+      <div class="card">
+        <h3>10.1 MQTT 5.0 标准 Reason Code（与业务响应对照）</h3>
+        <div class="table-wrap"><table>
+          <tr><th>Hex</th><th>名称</th><th>场景</th><th>BMS 处理建议</th></tr>
+          <tr><td>0x00</td><td>Success</td><td>全部成功</td><td>-</td></tr>
+          <tr><td>0x10</td><td>No matching subscribers</td><td>QoS1 发布无订阅者</td><td>检查平台订阅是否在线</td></tr>
+          <tr><td>0x87</td><td>Not authorized</td><td>ACL 拒绝 / 认证失败</td><td>检查设备账号与 ACL 配置</td></tr>
+          <tr><td>0x90</td><td>Topic Name invalid</td><td>Topic 非法</td><td>检查设备发布 Topic 是否符合第 4 章</td></tr>
+          <tr><td>0x97</td><td>Quota exceeded</td><td>限流 / 配额超限</td><td>检查速率限制配置</td></tr>
+          <tr><td>0x99</td><td>Payload format invalid</td><td>Payload 格式错误</td><td>检查 JSON 格式（Payload Format Indicator=1）</td></tr>
+          <tr><td>0x9C</td><td>Use another server</td><td>请连接 Server Reference</td><td>设备按 Server Reference 切换节点</td></tr>
+          <tr><td>0xA1</td><td>Connection rate exceeded</td><td>连接频率超限</td><td>启用指数退避重试</td></tr>
+        </table></div>
+      </div>
+
+      <h3>10.2 业务响应码（resp.code）</h3>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <tr><th>响应码</th><th>说明</th><th>可重试</th></tr>
+          <tr><td>0</td><td>成功</td><td>-</td></tr>
+          <tr><td>1001</td><td>设备未激活</td><td>否</td></tr>
+          <tr><td>1002</td><td>设备已被锁定</td><td>否</td></tr>
+          <tr><td>1003</td><td>设备已失效</td><td>否</td></tr>
+          <tr><td>1004</td><td>设备不存在</td><td>否</td></tr>
+          <tr><td>1005</td><td>设备离线（不可达）</td><td>是（等重连）</td></tr>
+          <tr><td>2001</td><td>指令参数缺失或格式错误</td><td>否</td></tr>
+          <tr><td>2002</td><td>不支持的指令类型</td><td>否</td></tr>
+          <tr><td>2003</td><td>参数值超出允许范围</td><td>否</td></tr>
+          <tr><td>2004</td><td>固件版本不兼容</td><td>否</td></tr>
+          <tr><td>3001</td><td>设备忙，无法执行指令</td><td>是</td></tr>
+          <tr><td>3002</td><td>硬件故障，无法执行</td><td>否</td></tr>
+          <tr><td>3003</td><td>通信模块异常</td><td>是</td></tr>
+          <tr><td>4001</td><td>OTA 固件下载失败</td><td>是</td></tr>
+          <tr><td>4002</td><td>OTA 固件 MD5 校验失败</td><td>是</td></tr>
+          <tr><td>4003</td><td>OTA 固件写入失败</td><td>否</td></tr>
+          <tr><td>4004</td><td>OTA 升级超时</td><td>是</td></tr>
+          <tr><td>5001</td><td>存储空间不足</td><td>否</td></tr>
+          <tr><td>5002</td><td>系统内部错误</td><td>是</td></tr>
+          <tr><td>9999</td><td>未知错误</td><td>是</td></tr>
+        </table></div>
+        <div class="note">平台判定规则：可重试（是）的失败码按「指数退避 5s→10s→30s→60s→300s」重发，最多 3 次后升级人工工单。</div>
+      </div>
+
+      <!-- ====================== 11. 告警 / 故障码 ====================== -->
+      <h2 id="s11">11. 告警 / 故障码定义</h2>
+      <div class="card">
+        <p>告警码按六大类划分。级别说明：warning（记录+通知，不触发保护）、fault（触发保护动作，需消除）、critical（立即切断，紧急通知）。</p>
+      </div>
+
+      <h3 id="s11-1">11.1 电压类（1xx）</h3>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <tr><th>码</th><th>名称</th><th>级别</th><th>说明</th></tr>
+          <tr><td>101</td><td>单体过压告警</td><td><span class="tag tag-up">warning</span></td><td>某串电压超过过压阈值</td></tr>
+          <tr><td>102</td><td>单体过压保护</td><td><span class="tag tag-red">fault</span></td><td>超过保护值，触发保护</td></tr>
+          <tr><td>103</td><td>单体低压告警</td><td><span class="tag tag-up">warning</span></td><td>低于低压阈值</td></tr>
+          <tr><td>104</td><td>单体低压保护</td><td><span class="tag tag-red">fault</span></td><td>低于保护值，触发保护</td></tr>
+          <tr><td>107</td><td>总电压过压告警</td><td><span class="tag tag-up">warning</span></td><td>总电压超阈值</td></tr>
+          <tr><td>108</td><td>总电压低压告警</td><td><span class="tag tag-up">warning</span></td><td>总电压低阈值</td></tr>
+          <tr><td>109</td><td>压差过大告警</td><td><span class="tag tag-up">warning</span></td><td>最高与最低压差超阈值</td></tr>
+        </table></div>
+      </div>
+
+      <h3 id="s11-2">11.2 电流告警（1xx）</h3>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <tr><th>码</th><th>名称</th><th>级别</th><th>说明</th></tr>
+          <tr><td>104</td><td>充电过流告警</td><td><span class="tag tag-up">warning</span></td><td>充电电流超阈值</td></tr>
+          <tr><td>105</td><td>限流故障</td><td><span class="tag tag-red">fault</span></td><td>限流保护触发</td></tr>
+          <tr><td>106</td><td>放电过流告警</td><td><span class="tag tag-up">warning</span></td><td>放电电流超阈值</td></tr>
+          <tr><td>110</td><td>短路保护</td><td><span class="tag tag-red">fault</span></td><td>短路立即切断</td></tr>
+        </table></div>
+      </div>
+
+      <h3 id="s11-3">11.3 温度告警（2xx）</h3>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <tr><th>码</th><th>名称</th><th>级别</th><th>说明</th></tr>
+          <tr><td>201</td><td>充电机高温故障</td><td><span class="tag tag-red">fault</span></td><td>充电机温度超阈值</td></tr>
+          <tr><td>202</td><td>电池高温告警</td><td><span class="tag tag-up">warning</span></td><td>电池温度超阈值</td></tr>
+          <tr><td>203</td><td>电池低温告警</td><td><span class="tag tag-up">warning</span></td><td>电池温度低阈值</td></tr>
+          <tr><td>204</td><td>MOS 高温告警</td><td><span class="tag tag-up">warning</span></td><td>MOS 温度超阈值</td></tr>
+          <tr><td>205</td><td>热敏电阻故障</td><td><span class="tag tag-red">fault</span></td><td>温度传感器异常</td></tr>
+          <tr><td>206</td><td>电池温差过大</td><td><span class="tag tag-up">warning</span></td><td>单体间温差超阈值</td></tr>
+        </table></div>
+      </div>
+
+      <h3 id="s11-4">11.4 SOC / SOH 告警（3xx）</h3>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <tr><th>码</th><th>名称</th><th>级别</th><th>说明</th></tr>
+          <tr><td>301</td><td>SOC 低电告警</td><td><span class="tag tag-up">warning</span></td><td>SOC 低于告警阈值</td></tr>
+          <tr><td>302</td><td>SOC 极低保护</td><td><span class="tag tag-red">fault</span></td><td>SOC 低于保护阈值</td></tr>
+          <tr><td>303</td><td>SOH 低告警</td><td><span class="tag tag-up">warning</span></td><td>健康度低阈值</td></tr>
+          <tr><td>304</td><td>循环次数告警</td><td><span class="tag tag-up">warning</span></td><td>循环次数超告警阈值</td></tr>
+        </table></div>
+      </div>
+
+      <h3 id="s11-5">11.5 通信故障（4xx）</h3>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <tr><th>码</th><th>名称</th><th>级别</th><th>说明</th></tr>
+          <tr><td>401</td><td>CAN 发送故障</td><td><span class="tag tag-red">fault</span></td><td>CAN 总线异常</td></tr>
+          <tr><td>402</td><td>RS485 通信故障</td><td><span class="tag tag-red">fault</span></td><td>RS485 异常</td></tr>
+          <tr><td>403</td><td>蓝牙通信故障</td><td><span class="tag tag-up">warning</span></td><td>蓝牙模块异常</td></tr>
+          <tr><td>404</td><td>MQTT 连接断开</td><td><span class="tag tag-red">fault</span></td><td>与平台连接断开（配合 LWT 状态）</td></tr>
+        </table></div>
+      </div>
+
+      <h3 id="s11-6">11.6 硬件故障（5xx）</h3>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <tr><th>码</th><th>名称</th><th>级别</th><th>说明</th></tr>
+          <tr><td>501</td><td>MOS 管损坏</td><td><span class="tag tag-red">fault</span></td><td>MOS 检测异常</td></tr>
+          <tr><td>502</td><td>充电机故障</td><td><span class="tag tag-red">fault</span></td><td>充电机硬件异常</td></tr>
+          <tr><td>503</td><td>电压采样异常</td><td><span class="tag tag-red">fault</span></td><td>电压采集电路故障</td></tr>
+          <tr><td>504</td><td>电流采样异常</td><td><span class="tag tag-red">fault</span></td><td>电流采集电路故障</td></tr>
+          <tr><td>505</td><td>GPS 模块异常</td><td><span class="tag tag-up">warning</span></td><td>GPS 定位模块故障</td></tr>
+        </table></div>
+      </div>
+
+      <!-- ====================== 12. 附录 ====================== -->
+      <h2 id="s12">12. 附录</h2>
+
+      <h3 id="s12-1">12.1 枚举值定义</h3>
+      <div class="card">
+        <h4>设备状态（deviceStatus）</h4>
+        <div class="table-wrap"><table>
+          <tr><th>值</th><th>说明</th></tr>
+          <tr><td>online</td><td>在线</td></tr>
+          <tr><td>offline</td><td>离线（心跳超时）</td></tr>
+          <tr><td>working</td><td>工作中（充放电）</td></tr>
+          <tr><td>sleep</td><td>休眠</td></tr>
+          <tr><td>locked</td><td>已锁定</td></tr>
+          <tr><td>inactive</td><td>未激活</td></tr>
+          <tr><td>failed</td><td>已失效</td></tr>
+        </table></div>
+        <h4>OTA 状态（otaStatus）</h4>
+        <div class="table-wrap"><table>
+          <tr><th>值</th><th>说明</th></tr>
+          <tr><td>downloading</td><td>固件下载中</td></tr>
+          <tr><td>installing</td><td>安装中</td></tr>
+          <tr><td>success</td><td>成功</td></tr>
+          <tr><td>failed</td><td>失败</td></tr>
+          <tr><td>rollback</td><td>回滚完成</td></tr>
+        </table></div>
+        <h4>保护状态位（protectionStatus，bit 位定义）</h4>
+        <div class="table-wrap"><table>
+          <tr><th>Bit</th><th>含义</th></tr>
+          <tr><td>bit0</td><td>充电过压保护</td></tr>
+          <tr><td>bit1</td><td>放电低压保护</td></tr>
+          <tr><td>bit2</td><td>充电过流保护</td></tr>
+          <tr><td>bit3</td><td>放电过流保护</td></tr>
+          <tr><td>bit4</td><td>短路保护</td></tr>
+          <tr><td>bit5</td><td>电池高温保护</td></tr>
+          <tr><td>bit6</td><td>电池低温保护</td></tr>
+          <tr><td>bit7</td><td>MOS 高温保护</td></tr>
+          <tr><td>bit8</td><td>充电机高温保护</td></tr>
+          <tr><td>bit9</td><td>SOC 极低保护</td></tr>
+          <tr><td>bit10</td><td>压差过大保护</td></tr>
+          <tr><td>bit11~31</td><td>预留</td></tr>
+        </table></div>
+        <h4>系统故障位（systemFault）</h4>
+        <div class="table-wrap"><table>
+          <tr><th>Bit</th><th>含义</th></tr>
+          <tr><td>bit0</td><td>CAN 通信故障</td></tr>
+          <tr><td>bit1</td><td>RS485 通信故障</td></tr>
+          <tr><td>bit2</td><td>热敏电阻故障</td></tr>
+          <tr><td>bit3</td><td>电压采样异常</td></tr>
+          <tr><td>bit4</td><td>电流采样异常</td></tr>
+          <tr><td>bit5</td><td>MOS 管损坏</td></tr>
+          <tr><td>bit6</td><td>充电机硬件故障</td></tr>
+          <tr><td>bit7</td><td>GPS 模块异常</td></tr>
+          <tr><td>bit8~31</td><td>预留</td></tr>
+        </table></div>
+        <h4>电池类型（batteryType）</h4>
+        <div class="table-wrap"><table>
+          <tr><th>值</th><th>说明</th></tr>
+          <tr><td>磷酸铁锂</td><td>LiFePO4</td></tr>
+          <tr><td>三元锂</td><td>NCM/NCA</td></tr>
+          <tr><td>钛酸锂</td><td>LTO</td></tr>
+          <tr><td>铅酸</td><td>铅改锂场景</td></tr>
+        </table></div>
+      </div>
+
+      <h3 id="s12-2">12.2 EMQX 系统主题（$SYS）</h3>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <tr><th>主题</th><th>说明</th></tr>
+          <tr><td><code>$SYS/brokers</code></td><td>集群节点列表</td></tr>
+          <tr><td><code>$SYS/brokers/{node}/version</code></td><td>EMQX 版本</td></tr>
+          <tr><td><code>$SYS/brokers/{node}/sysdescr</code></td><td>系统描述</td></tr>
+          <tr><td><code>$SYS/brokers/{node}/uptime</code></td><td>节点运行时长</td></tr>
+          <tr><td><code>$SYS/brokers/{node}/stats/connections.count</code></td><td>当前连接数</td></tr>
+          <tr><td><code>$SYS/brokers/{node}/stats/messages.received</code></td><td>累计接收消息数</td></tr>
+          <tr><td><code>$SYS/brokers/{node}/stats/messages.sent</code></td><td>累计发送消息数</td></tr>
+          <tr><td><code>$SYS/brokers/{node}/stats/sessions.count</code></td><td>当前会话数</td></tr>
+          <tr><td><code>$SYS/brokers/{node}/stats/subscribers.count</code></td><td>当前订阅数</td></tr>
+          <tr><td><code>$SYS/brokers/{node}/topics.count</code></td><td>当前 Topic 数</td></tr>
+        </table></div>
+        <div class="note">平台运维可订阅 $SYS（注意 ACL 需放行），用于集群监控（对接 Prometheus 亦可）。</div>
+      </div>
+
+      <h3 id="s12-3">12.3 ACL 授权规则示例</h3>
+      <div class="card">
+        <h4>文件 / 内置规则（emqx.conf 或 Dashboard）</h4>
+<pre class="hl"><code class="lang-qt"># 授权规则（按顺序匹配，首个命中生效）
+authorization {
+  deny_list = []
+  no_match = deny
+  sources = [
+    { type = built_in_database, enable = true }
+  ]
+}
+
+# 内置 ACL 表（可 Dashboard 直接维护）
+#  设备端：仅允许发布自己的 /bms/device/{imei}/# 上行 & 订阅自己的下行
+#  平台端：允许订阅 $share/bms-platform/# 与发布 bms/device/+/cmd/#
+#  平台端：允许订阅 $SYS/# 仅监控</code></pre>
+        <h4>HTTP ACL（动态鉴权，推荐）</h4>
+<pre class="hl"><code class="lang-qt">authorization {
+  sources = [
+    { type = http
+      url = "http://api.bms-system.com/v1/mqtt/acl"
+      enable = true
+      method = post
+      headers = { "content-type" = "application/json" }
+      body = json{
+        username = "${username}",
+        clientid = "${clientid}",
+        topic    = "${topic}",
+        action   = "${action}"
+      }
+    }
+  ]
+}</code></pre>
+        <div class="note">ACL 判定优先级：黑名单（deny）→ 授权链 sources 按顺序 → no_match 默认 deny。生产建议「白名单 + deny-all」策略。</div>
+      </div>
+
+      <h3 id="s12-4">12.4 Schema Registry（Avro / Protobuf 编解码）</h3>
+      <div class="card">
+        <p>EMQX 5.7.2 Schema Registry 支持 Avro / Protobuf 编解码，配合规则引擎 <code>schema_encode / schema_decode</code> 实现二进制载荷校验与转换（适合固件侧节省带宽）。BMS 可选启用（默认 JSON，如启用则需固化 Schema 版本）：</p>
+        <h4>Protobuf 示例（bms_cell.proto）</h4>
+<pre class="hl"><code class="lang-protobuf">syntax = "proto3";
+message BmsCell {
+    string imei = 1;
+    uint32 msg_id = 2;
+    int32  total_voltage_mv = 3;
+    int32  current_ma = 4;
+    uint32 soc = 5;
+    repeated uint32 cell_voltages_mv = 6;
+    int64  timestamp_ms = 7;
+}</code></pre>
+        <h4>规则中使用 schema 函数</h4>
+<pre class="hl"><code class="lang-sql">-- 解码二进制载荷为 JSON 字段
+SELECT schema_decode('bms_cell', payload) AS cell
+FROM "bms/device/+/data"
+WHERE payload IS NOT NULL</code></pre>
+      </div>
+
+      <h3 id="s12-5">12.5 连接重试策略</h3>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <tr><th>重试次数</th><th>等待时间</th><th>说明</th></tr>
+          <tr><td>第 1 次</td><td>5 秒</td><td>立即重连</td></tr>
+          <tr><td>第 2 次</td><td>10 秒</td><td>-</td></tr>
+          <tr><td>第 3 次</td><td>30 秒</td><td>-</td></tr>
+          <tr><td>第 4 次</td><td>60 秒</td><td>-</td></tr>
+          <tr><td>第 5 次起</td><td>300 秒</td><td>持续重试至成功</td></tr>
+        </table></div>
+        <div class="note">配合会话持久化：重连时 Clean Start=false，Session Expiry=300，断线期间 QoS 1/2 离线消息在重连后自动补投。</div>
+      </div>
+
+      <h3 id="s12-6">12.6 Topic 订阅清单</h3>
+      <div class="card">
+        <h4>设备端（连接后订阅）</h4>
+        <div class="table-wrap"><table>
+          <tr><th>Topic</th><th>说明</th></tr>
+          <tr><td><code>bms/device/{imei}/cmd/#</code></td><td>全部下行指令</td></tr>
+          <tr><td><code>bms/device/{imei}/ota/#</code></td><td>OTA 相关</td></tr>
+        </table></div>
+        <h4>平台消费端（共享订阅）</h4>
+        <div class="table-wrap"><table>
+          <tr><th>Topic</th><th>说明</th></tr>
+          <tr><td><code>$share/bms-platform/bms/device/+/register</code></td><td>设备注册（共享）</td></tr>
+          <tr><td><code>$share/bms-platform/bms/device/+/heartbeat</code></td><td>心跳（共享）</td></tr>
+          <tr><td><code>$share/bms-platform/bms/device/+/data</code></td><td>电池数据（共享）</td></tr>
+          <tr><td><code>$share/bms-platform/bms/device/+/switch</code></td><td>开关状态（共享）</td></tr>
+          <tr><td><code>$share/bms-platform/bms/device/+/voltage</code></td><td>单体电压（共享）</td></tr>
+          <tr><td><code>$share/bms-platform/bms/device/+/gps</code></td><td>GPS（共享）</td></tr>
+          <tr><td><code>$share/bms-platform/bms/device/+/alarm</code></td><td>告警（共享）</td></tr>
+          <tr><td><code>$share/bms-platform/bms/device/+/ota/status</code></td><td>OTA 状态（共享）</td></tr>
+          <tr><td><code>$share/bms-platform/bms/device/+/resp</code></td><td>指令响应（共享）</td></tr>
+          <tr><td><code>bms/device/+/status</code></td><td>在线状态（<b>非共享</b>，保留消息）</td></tr>
+        </table></div>
+      </div>
+
+      <div class="footer">
+        <p>BMS管理系统 MQTT接口协议 V2.0（EMQX 5.7.2 + MQTT 5.0）| 文档日期：2026-10-08</p>
+        <p>设备端固件开发与平台服务端请严格遵循本协议实现 MQTT 5.0 通信。</p>
+      </div>
+
+    </div>
+  </main>
 </div>
 
-<!-- ====== 7. 响应码 ====== -->
-<h2 id="s7">7. 响应码定义</h2>
-<div class="card">
-  <table>
-    <tr><th>响应码</th><th>说明</th></tr>
-    <tr><td>0</td><td>成功</td></tr>
-    <tr><td>1001</td><td>设备未激活</td></tr>
-    <tr><td>1002</td><td>设备已被锁定</td></tr>
-    <tr><td>1003</td><td>设备已被失效</td></tr>
-    <tr><td>2001</td><td>指令参数缺失或格式错误</td></tr>
-    <tr><td>2002</td><td>不支持的指令类型</td></tr>
-    <tr><td>2003</td><td>参数值超出允许范围</td></tr>
-    <tr><td>2004</td><td>固件版本不兼容</td></tr>
-    <tr><td>3001</td><td>设备忙，无法执行指令</td></tr>
-    <tr><td>3002</td><td>硬件故障，无法执行</td></tr>
-    <tr><td>3003</td><td>通信模块异常</td></tr>
-    <tr><td>4001</td><td>OTA固件下载失败</td></tr>
-    <tr><td>4002</td><td>OTA固件MD5校验失败</td></tr>
-    <tr><td>4003</td><td>OTA固件写入失败</td></tr>
-    <tr><td>4004</td><td>OTA升级超时</td></tr>
-    <tr><td>5001</td><td>存储空间不足</td></tr>
-    <tr><td>5002</td><td>系统内部错误</td></tr>
-    <tr><td>9999</td><td>未知错误</td></tr>
-  </table>
-</div>
+<script>
+(function(){
+  'use strict';
 
-<!-- ====== 8. 告警/故障码 ====== -->
-<h2 id="s8">8. 告警/故障码定义</h2>
-<div class="card">
-  <h3>8.1 电压类告警</h3>
-  <table>
-    <tr><th>告警码</th><th>告警类型</th><th>级别</th><th>说明</th></tr>
-    <tr><td>101</td><td>单体过压告警</td><td><span class="tag tag-up">warning</span></td><td>某串电池电压超过过压阈值</td></tr>
-    <tr><td>102</td><td>单体过压保护</td><td><span class="tag tag-down">fault</span></td><td>某串电池电压超过保护值，触发保护</td></tr>
-    <tr><td>103</td><td>单体低压告警</td><td><span class="tag tag-up">warning</span></td><td>某串电池电压低于低压阈值</td></tr>
-    <tr><td>104</td><td>单体低压保护</td><td><span class="tag tag-down">fault</span></td><td>某串电池电压低于保护值，触发保护</td></tr>
-    <tr><td>107</td><td>总电压过压告警</td><td><span class="tag tag-up">warning</span></td><td>电池总电压超过阈值</td></tr>
-    <tr><td>108</td><td>总电压低压告警</td><td><span class="tag tag-up">warning</span></td><td>电池总电压低于阈值</td></tr>
-    <tr><td>109</td><td>压差过大告警</td><td><span class="tag tag-up">warning</span></td><td>最高与最低单体电压差超过阈值</td></tr>
-  </table>
-  <h3>8.2 电流类告警</h3>
-  <table>
-    <tr><th>告警码</th><th>告警类型</th><th>级别</th><th>说明</th></tr>
-    <tr><td>104</td><td>充电过流告警</td><td><span class="tag tag-up">warning</span></td><td>充电电流超过阈值</td></tr>
-    <tr><td>105</td><td>限流故障</td><td><span class="tag tag-down">fault</span></td><td>限流保护触发</td></tr>
-    <tr><td>106</td><td>放电过流告警</td><td><span class="tag tag-up">warning</span></td><td>放电电流超过阈值</td></tr>
-    <tr><td>110</td><td>短路保护</td><td><span class="tag tag-down">fault</span></td><td>检测到短路，立即切断</td></tr>
-  </table>
-  <h3>8.3 温度类告警</h3>
-  <table>
-    <tr><th>告警码</th><th>告警类型</th><th>级别</th><th>说明</th></tr>
-    <tr><td>201</td><td>充电机高温故障</td><td><span class="tag tag-down">fault</span></td><td>充电机温度超过阈值</td></tr>
-    <tr><td>202</td><td>电池高温告警</td><td><span class="tag tag-up">warning</span></td><td>电池温度超过阈值</td></tr>
-    <tr><td>203</td><td>电池低温告警</td><td><span class="tag tag-up">warning</span></td><td>电池温度低于阈值</td></tr>
-    <tr><td>204</td><td>MOS高温告警</td><td><span class="tag tag-up">warning</span></td><td>MOS管温度超过阈值</td></tr>
-    <tr><td>205</td><td>热敏电阻故障</td><td><span class="tag tag-down">fault</span></td><td>温度传感器异常</td></tr>
-    <tr><td>206</td><td>电池温差过大</td><td><span class="tag tag-up">warning</span></td><td>电池间温差超过阈值</td></tr>
-  </table>
-  <h3>8.4 SOC/SOH类告警</h3>
-  <table>
-    <tr><th>告警码</th><th>告警类型</th><th>级别</th><th>说明</th></tr>
-    <tr><td>301</td><td>SOC低电告警</td><td><span class="tag tag-up">warning</span></td><td>SOC低于告警阈值</td></tr>
-    <tr><td>302</td><td>SOC极低保护</td><td><span class="tag tag-down">fault</span></td><td>SOC低于保护阈值</td></tr>
-    <tr><td>303</td><td>SOH低告警</td><td><span class="tag tag-up">warning</span></td><td>电池健康度低于阈值</td></tr>
-    <tr><td>304</td><td>循环次数告警</td><td><span class="tag tag-up">warning</span></td><td>循环次数超过告警阈值</td></tr>
-  </table>
-  <h3>8.5 通信类故障</h3>
-  <table>
-    <tr><th>告警码</th><th>告警类型</th><th>级别</th><th>说明</th></tr>
-    <tr><td>401</td><td>CAN发送故障</td><td><span class="tag tag-down">fault</span></td><td>CAN总线通信异常</td></tr>
-    <tr><td>402</td><td>RS485通信故障</td><td><span class="tag tag-down">fault</span></td><td>RS485通信异常</td></tr>
-    <tr><td>403</td><td>蓝牙通信故障</td><td><span class="tag tag-up">warning</span></td><td>蓝牙模块异常</td></tr>
-    <tr><td>404</td><td>MQTT连接断开</td><td><span class="tag tag-down">fault</span></td><td>设备与平台连接断开</td></tr>
-  </table>
-  <h3>8.6 硬件类故障</h3>
-  <table>
-    <tr><th>告警码</th><th>告警类型</th><th>级别</th><th>说明</th></tr>
-    <tr><td>501</td><td>MOS管损坏</td><td><span class="tag tag-down">fault</span></td><td>MOS管检测异常</td></tr>
-    <tr><td>502</td><td>充电机故障</td><td><span class="tag tag-down">fault</span></td><td>充电机硬件异常</td></tr>
-    <tr><td>503</td><td>电压采样异常</td><td><span class="tag tag-down">fault</span></td><td>电压采集电路故障</td></tr>
-    <tr><td>504</td><td>电流采样异常</td><td><span class="tag tag-down">fault</span></td><td>电流采集电路故障</td></tr>
-    <tr><td>505</td><td>GPS模块异常</td><td><span class="tag tag-up">warning</span></td><td>GPS定位模块故障</td></tr>
-  </table>
-</div>
+  /* ---------- 移动端菜单 ---------- */
+  var menuBtn = document.getElementById('menuBtn');
+  var sidebar = document.getElementById('sidebar');
+  if (menuBtn && sidebar) {
+    menuBtn.addEventListener('click', function(){
+      sidebar.classList.toggle('open');
+    });
+    document.addEventListener('click', function(e){
+      if (window.innerWidth <= 960 && sidebar.classList.contains('open')) {
+        if (!sidebar.contains(e.target) && e.target !== menuBtn) {
+          sidebar.classList.remove('open');
+        }
+      }
+    });
+  }
 
-<!-- ====== 9. 枚举值 ====== -->
-<h2 id="s9">9. 枚举值定义</h2>
-<div class="card">
-  <h3>9.1 设备状态 (deviceStatus)</h3>
-  <table>
-    <tr><th>值</th><th>说明</th></tr>
-    <tr><td>online</td><td>在线，正常通信中</td></tr>
-    <tr><td>offline</td><td>离线，心跳超时</td></tr>
-    <tr><td>working</td><td>工作中，正在充放电</td></tr>
-    <tr><td>inactive</td><td>未激活，尚未注册</td></tr>
-    <tr><td>locked</td><td>已锁定，被平台远程锁定</td></tr>
-    <tr><td>failed</td><td>已失效，设备已报废</td></tr>
-  </table>
-  <h3>9.2 保护状态位 (protectionStatus)</h3>
-  <p>32位整数，各bit位含义：</p>
-  <table>
-    <tr><th>Bit位</th><th>说明</th><th>1=触发</th></tr>
-    <tr><td>bit0</td><td>充电过压保护</td><td>触发充电过压保护</td></tr>
-    <tr><td>bit1</td><td>放电低压保护</td><td>触发放电低压保护</td></tr>
-    <tr><td>bit2</td><td>充电过流保护</td><td>触发充电过流保护</td></tr>
-    <tr><td>bit3</td><td>放电过流保护</td><td>触发放电过流保护</td></tr>
-    <tr><td>bit4</td><td>短路保护</td><td>触发短路保护</td></tr>
-    <tr><td>bit5</td><td>电池高温保护</td><td>触发高温保护</td></tr>
-    <tr><td>bit6</td><td>电池低温保护</td><td>触发低温保护</td></tr>
-    <tr><td>bit7</td><td>MOS高温保护</td><td>触发MOS高温保护</td></tr>
-    <tr><td>bit8</td><td>充电机高温保护</td><td>触发充电机高温保护</td></tr>
-    <tr><td>bit9</td><td>SOC极低保护</td><td>触发SOC极低保护</td></tr>
-    <tr><td>bit10</td><td>压差过大保护</td><td>触发压差保护</td></tr>
-    <tr><td>bit11~31</td><td>预留</td><td>保留位，默认0</td></tr>
-  </table>
-  <div class="note">protectionStatus = 0 表示无任何保护触发；非0值需对应bit位解析。</div>
-  <h3>9.3 系统故障位 (systemFault)</h3>
-  <table>
-    <tr><th>Bit位</th><th>说明</th></tr>
-    <tr><td>bit0</td><td>CAN通信故障</td></tr>
-    <tr><td>bit1</td><td>RS485通信故障</td></tr>
-    <tr><td>bit2</td><td>热敏电阻故障</td></tr>
-    <tr><td>bit3</td><td>电压采样异常</td></tr>
-    <tr><td>bit4</td><td>电流采样异常</td></tr>
-    <tr><td>bit5</td><td>MOS管损坏</td></tr>
-    <tr><td>bit6</td><td>充电机硬件故障</td></tr>
-    <tr><td>bit7</td><td>GPS模块异常</td></tr>
-    <tr><td>bit8~31</td><td>预留</td></tr>
-  </table>
-  <h3>9.4 告警级别 (alarmLevel)</h3>
-  <table>
-    <tr><th>值</th><th>说明</th><th>处理方式</th></tr>
-    <tr><td>warning</td><td>警告</td><td>记录并通知，不触发保护</td></tr>
-    <tr><td>fault</td><td>故障</td><td>触发保护动作，需人工或远程消除</td></tr>
-    <tr><td>critical</td><td>严重</td><td>立即切断，推送紧急通知</td></tr>
-  </table>
-  <h3>9.5 电池类型 (batteryType)</h3>
-  <table>
-    <tr><th>值</th><th>说明</th></tr>
-    <tr><td>磷酸铁锂</td><td>LiFePO4电池</td></tr>
-    <tr><td>三元锂</td><td>NCM/NCA电池</td></tr>
-    <tr><td>钛酸锂</td><td>LTO电池</td></tr>
-    <tr><td>铅酸</td><td>铅酸电池（铅改锂场景）</td></tr>
-  </table>
-  <h3>9.6 OTA升级状态 (otaStatus)</h3>
-  <table>
-    <tr><th>值</th><th>说明</th></tr>
-    <tr><td>downloading</td><td>固件下载中</td></tr>
-    <tr><td>installing</td><td>固件安装中</td></tr>
-    <tr><td>success</td><td>升级成功</td></tr>
-    <tr><td>failed</td><td>升级失败</td></tr>
-    <tr><td>rollback</td><td>升级失败已回滚</td></tr>
-  </table>
-</div>
+  /* ---------- 目录高亮（scrollspy） ---------- */
+  var links = Array.prototype.slice.call(document.querySelectorAll('#sidebarNav a'));
+  var map = links.map(function(a){
+    var id = a.getAttribute('href').slice(1);
+    var el = document.getElementById(id);
+    return { link: a, el: el, top: el ? el.offsetTop : -1 };
+  }).filter(function(x){ return x.el; });
 
-<!-- ====== 10. 附录 ====== -->
-<h2 id="s10">10. 附录</h2>
-<div class="card">
-  <h3>10.1 数据类型与单位说明</h3>
-  <table>
-    <tr><th>类型</th><th>说明</th></tr>
-    <tr><td>String</td><td>UTF-8字符串</td></tr>
-    <tr><td>Integer</td><td>32位整数</td></tr>
-    <tr><td>Float</td><td>32位浮点数，保留1-2位小数</td></tr>
-    <tr><td>Double</td><td>64位浮点数，用于经纬度</td></tr>
-    <tr><td>Boolean</td><td>布尔值，true/false</td></tr>
-    <tr><td>Object</td><td>JSON对象</td></tr>
-    <tr><td>Array</td><td>JSON数组</td></tr>
-  </table>
-  <h3>10.2 时间格式</h3>
-  <p>所有时间字段统一使用ISO 8601格式：<code>yyyy-MM-ddTHH:mm:ssZ</code></p>
-  <p>时区：UTC（设备端使用UTC时间上报，平台端转换为本地时区+8展示）</p>
-  <p>示例：<code>2026-09-18T08:30:00Z</code></p>
-  <h3>10.3 消息去重</h3>
-  <p>每个消息携带 <code>msgId</code>（UUID格式），平台端维护最近5分钟的消息ID缓存，重复 <code>msgId</code> 的消息将被丢弃。</p>
-  <h3>10.4 消息大小限制</h3>
-  <p>单条MQTT消息Payload不超过 <strong>16KB</strong>。单体电压数据如串数超过48串，需拆分多条消息上报。</p>
-  <h3>10.5 连接重试策略</h3>
-  <table>
-    <tr><th>重试次数</th><th>等待时间</th><th>说明</th></tr>
-    <tr><td>第1次</td><td>5秒</td><td>立即重连</td></tr>
-    <tr><td>第2次</td><td>10秒</td><td>-</td></tr>
-    <tr><td>第3次</td><td>30秒</td><td>-</td></tr>
-    <tr><td>第4次</td><td>60秒</td><td>-</td></tr>
-    <tr><td>第5次及以后</td><td>300秒</td><td>持续重试，直到连接成功</td></tr>
-  </table>
-  <h3>10.6 Topic订阅清单</h3>
-  <p>设备端连接成功后需订阅以下Topic接收平台指令：</p>
-  <table>
-    <tr><th>Topic</th><th>说明</th></tr>
-    <tr><td>bms/device/{imei}/cmd/#</td><td>通配订阅所有下行指令</td></tr>
-  </table>
-  <p>平台端需订阅以下Topic接收设备上报：</p>
-  <table>
-    <tr><th>Topic</th><th>说明</th></tr>
-    <tr><td>bms/device/+/register</td><td>所有设备注册消息</td></tr>
-    <tr><td>bms/device/+/heartbeat</td><td>所有设备心跳</td></tr>
-    <tr><td>bms/device/+/status</td><td>所有设备状态变更</td></tr>
-    <tr><td>bms/device/+/data</td><td>所有电池数据</td></tr>
-    <tr><td>bms/device/+/switch</td><td>所有开关状态</td></tr>
-    <tr><td>bms/device/+/voltage</td><td>所有单体电压</td></tr>
-    <tr><td>bms/device/+/gps</td><td>所有GPS定位</td></tr>
-    <tr><td>bms/device/+/alarm</td><td>所有告警/故障</td></tr>
-    <tr><td>bms/device/+/ota/status</td><td>所有OTA状态</td></tr>
-    <tr><td>bms/device/+/resp</td><td>所有指令响应</td></tr>
-  </table>
-</div>
+  function onScroll(){
+    var pos = window.pageYOffset + 90;
+    var current = null;
+    for (var i = 0; i < map.length; i++) {
+      if (map[i].el.offsetTop <= pos) { current = map[i].link; }
+    }
+    for (var j = 0; j < links.length; j++) {
+      var act = (links[j] === current);
+      if (act) { links[j].classList.add('active'); }
+      else { links[j].classList.remove('active'); }
+    }
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll, { passive: true });
+  onScroll();
 
-<div class="card" style="text-align:center;margin-top:32px;color:var(--text2);">
-  <p>BMS管理系统 MQTT接口协议 V1.0 | 文档日期：2026-09-18</p>
-  <p>本协议由BMS管理平台团队编写，设备端开发请严格按照本协议实现MQTT通信。</p>
-</div>
+  /* ---------- 代码高亮（纯前端，无依赖） ---------- */
+  function esc(s){
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function isKeyword(w){
+    return /^(SELECT|FROM|WHERE|AND|OR|NOT|AS|IN|INTO|VALUES|UPDATE|DELETE|FOREACH|DO|IF|THEN|ELSE|TRUE|FALSE|NULL|ACTION|JOIN|SET|LIKE)$/i.test(w);
+  }
+  function highlight(code){
+    var out = '', i = 0, n = code.length;
+    while (i < n) {
+      var ch = code.charAt(i);
+      var nxt = code.charAt(i + 1);
+      /* 行注释 // */
+      if (ch === '/' && nxt === '/') {
+        var e = code.indexOf('\n', i);
+        if (e < 0) e = n;
+        out += '<span class="com">' + esc(code.slice(i, e)) + '</span>';
+        i = e; continue;
+      }
+      /* 块注释（star-slash） */
+      if (ch === '/' && nxt === '*') {
+        var e = code.indexOf('*/', i + 2);
+        if (e < 0) e = n; else e += 2;
+        out += '<span class="com">' + esc(code.slice(i, e)) + '</span>';
+        i = e; continue;
+      }
+      /* # 注释（conf 文件） */
+      if (ch === '#') {
+        var e = code.indexOf('\n', i);
+        if (e < 0) e = n;
+        out += '<span class="com">' + esc(code.slice(i, e)) + '</span>';
+        i = e; continue;
+      }
+      /* 字符串 */
+      if (ch === '"' || ch === "'") {
+        var q = ch, j = i + 1, closed = false;
+        while (j < n) {
+          if (code.charAt(j) === '\\') { j += 2; continue; }
+          if (code.charAt(j) === q) { closed = true; break; }
+          j++;
+        }
+        if (closed) {
+          var raw = code.slice(i, j + 1);
+          var k = j + 1;
+          while (k < n && (code.charAt(k) === ' ' || code.charAt(k) === '\t')) k++;
+          if (q === '"' && code.charAt(k) === ':') {
+            out += '<span class="key">' + esc(raw) + '</span>';
+          } else {
+            out += '<span class="str">' + esc(raw) + '</span>';
+          }
+          i = j + 1; continue;
+        }
+        out += esc(ch); i++; continue;
+      }
+      /* 数字 */
+      if (/[0-9]/.test(ch) || (ch === '-' && /[0-9]/.test(nxt || ''))) {
+        var j = i + 1;
+        while (j < n && /[0-9a-zA-Z._+\-]/.test(code.charAt(j))) j++;
+        out += '<span class="num">' + esc(code.slice(i, j)) + '</span>';
+        i = j; continue;
+      }
+      /* 单词（含 SQL 关键字） */
+      if (/[A-Za-z_$]/.test(ch)) {
+        var j = i + 1;
+        while (j < n && /[A-Za-z0-9_$]/.test(code.charAt(j))) j++;
+        var w = code.slice(i, j);
+        if (isKeyword(w)) {
+          out += '<span class="kw">' + esc(w) + '</span>';
+        } else {
+          out += esc(w);
+        }
+        i = j; continue;
+      }
+      out += esc(ch); i++;
+    }
+    return out;
+  }
 
-</div>
+  var blocks = document.querySelectorAll('pre.hl code');
+  for (var b = 0; b < blocks.length; b++) {
+    blocks[b].innerHTML = highlight(blocks[b].textContent);
+  }
+})();
+</script>
 </body>
 </html>
